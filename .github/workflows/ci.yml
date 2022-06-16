@@ -15,14 +15,8 @@ jobs:
         with:
           profile: minimal
           toolchain: stable
-      - run: cargo build
-      - run: cargo test --all --verbose
-
-      - name: Install reference compiler (ocaml)
-        run: sudo apt-get install ocaml
-
-      - name: Run test programs
-        run: RUST_BACKTRACE=1 ./target/debug/test
+      - run: cargo build --release
+      - run: cargo test --release
 
   rustfmt:
     name: Rustfmt
@@ -39,8 +33,8 @@ jobs:
       - run: cargo fmt -- --check
 
   clippy:
-    runs-on: ubuntu-latest
     name: Clippy
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
 
