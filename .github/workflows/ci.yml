@@ -15,7 +15,7 @@ jobs:
         with:
           profile: minimal
           toolchain: stable
-      - run: cargo build --debug
+      - run: cargo build
       - run: cargo test --all --verbose
 
       - name: Install reference compiler (ocaml)
@@ -39,8 +39,8 @@ jobs:
       - run: cargo fmt -- --check
 
   clippy:
-    name: Clippy
     runs-on: ubuntu-latest
+    name: Clippy
     steps:
       - uses: actions/checkout@v2
 
