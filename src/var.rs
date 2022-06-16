@@ -1,9 +1,8 @@
+use crate::utils;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::num::NonZeroU32;
 use std::rc::Rc;
-
-use crate::utils;
 
 // TODO: Should really be an abstract type but we have to expose the field to be able to create
 // fresh ones in another module

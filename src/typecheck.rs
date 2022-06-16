@@ -1,11 +1,11 @@
-use fxhash::FxHashMap;
-use std::rc::Rc;
-
 use crate::ast::Expr;
 use crate::ctx::{Ctx, VarId};
 use crate::locals::Locals;
 use crate::utils::take;
 use crate::var::Uniq;
+use fxhash::FxHashMap;
+use std::fmt;
+use std::rc::Rc;
 
 pub type TyVar = Uniq;
 
@@ -414,8 +414,6 @@ fn unify(subst_env: &mut SubstEnv, ty1: &Type, ty2: &Type) -> Result<(), TypeErr
         _ => Err(TypeErr::UnifyError(ty1.clone(), ty2.clone())),
     }
 }
-
-use std::fmt;
 
 impl Type {
     pub fn pp(&self, w: &mut dyn fmt::Write) -> fmt::Result {

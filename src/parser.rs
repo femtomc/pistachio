@@ -1,7 +1,6 @@
 use crate::ast::ParsedExpr;
 use crate::common::{Cmp, FloatBinOp, IntBinOp};
 use crate::lexer::Token;
-
 use parsegen::parser;
 
 parser! {
@@ -344,7 +343,6 @@ parser! {
 #[cfg(test)]
 mod test {
     use super::*;
-
     use crate::lexer::tokenize;
 
     fn parse(s: &str) -> ParsedExpr {

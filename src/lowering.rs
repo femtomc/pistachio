@@ -5,12 +5,11 @@ use crate::ctx::{Ctx, VarId};
 use crate::typecheck::Type;
 use crate::var::CompilerPhase::ClosureConvert;
 use cranelift_entity::PrimaryMap;
+use fxhash::FxHashSet;
 
 // Used when debugging
 #[allow(unused_imports)]
 use crate::utils;
-
-use fxhash::FxHashSet;
 
 #[derive(Debug, Clone)]
 enum Sequel {

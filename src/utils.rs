@@ -2,6 +2,8 @@ use crate::ctx::{Ctx, VarId};
 use crate::var::Uniq;
 use std::fmt;
 use std::fmt::Write;
+use std::panic;
+use std::ptr;
 
 pub fn comma_sep(s: &str) -> String {
     let s_len = s.len();
@@ -29,9 +31,6 @@ pub fn take<T, F>(mut_ref: &mut T, closure: F)
 where
     F: FnOnce(T) -> T,
 {
-    use std::panic;
-    use std::ptr;
-
     unsafe {
         let old_t = ptr::read(mut_ref);
         let new_t = panic::catch_unwind(panic::AssertUnwindSafe(|| closure(old_t)))
