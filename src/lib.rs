@@ -2,7 +2,7 @@
 
 mod anormal;
 mod ast;
-mod cg_types;
+mod cfg;
 mod codegen;
 mod common;
 mod ctx;
@@ -10,7 +10,7 @@ pub mod diagnostics;
 mod interner;
 mod lexer;
 mod locals;
-mod lower;
+mod lowering;
 mod parser;
 mod typecheck;
 mod utils;
@@ -19,7 +19,7 @@ mod var;
 use anormal::anormal;
 use codegen::codegen;
 use lexer::{tokenize, Token};
-use lower::lower_pgm;
+use lowering::lower_pgm;
 use typecheck::typecheck_pgm;
 
 use std::fs::File;

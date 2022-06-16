@@ -1,16 +1,9 @@
-mod print;
-mod types;
-
 use crate::anormal;
-use crate::cg_types::RepType;
+use crate::cfg::*;
 use crate::common::{BinOp, Cmp, IntBinOp};
 use crate::ctx::{Ctx, VarId};
 use crate::typecheck::Type;
 use crate::var::CompilerPhase::ClosureConvert;
-
-pub use print::*;
-pub use types::*;
-
 use cranelift_entity::PrimaryMap;
 
 // Used when debugging

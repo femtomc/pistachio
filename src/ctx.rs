@@ -1,4 +1,4 @@
-use crate::cg_types::RepType;
+use crate::cfg::RepType;
 use crate::interner::{InternId, InternTable};
 use crate::typecheck::{TyVar, Type};
 use crate::var::{CompilerPhase, Uniq, Var};

@@ -1,3 +1,8 @@
+use crate::cfg::{self, RepType};
+use crate::common::{BinOp, Cmp, FloatBinOp, IntBinOp};
+use crate::ctx::{Ctx, VarId};
+use crate::lowering;
+use crate::typecheck;
 use cranelift_codegen::entity::EntityRef;
 use cranelift_codegen::ir::condcodes::{FloatCC, IntCC};
 use cranelift_codegen::ir::entities::{Block, FuncRef, SigRef, Value};
@@ -11,20 +16,13 @@ use cranelift_codegen::verifier::verify_function;
 use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext, Variable};
 use cranelift_module::{default_libcall_names, DataId, FuncId, Linkage, Module};
 use cranelift_object::{ObjectBuilder, ObjectModule, ObjectProduct};
+use fxhash::{FxHashMap, FxHashSet};
 use std::fs::File;
 use std::io::Write;
 
-use fxhash::{FxHashMap, FxHashSet};
-
-use crate::cg_types::RepType;
-use crate::common::{BinOp, Cmp, FloatBinOp, IntBinOp};
-use crate::ctx::{Ctx, VarId};
-use crate::lower;
-use crate::typecheck;
-
 pub fn codegen(
     ctx: &mut Ctx,
-    funs: &[lower::Fun],
+    funs: &[cfg::Fun],
     main_id: VarId,
     out_dir: &str,
     dump: bool,
@@ -190,7 +188,7 @@ fn declare_malloc(module: &mut ObjectModule) -> FuncId {
 fn init_module_env(
     ctx: &mut Ctx,
     module: &mut ObjectModule,
-    funs: &[lower::Fun],
+    funs: &[cfg::Fun],
     main_id: VarId,
 ) -> (Env, FuncId) {
     let mut main_fun_id: Option<FuncId> = None;
@@ -208,7 +206,7 @@ fn init_module_env(
     }
 
     // Declare functions
-    for lower::Fun {
+    for cfg::Fun {
         name,
         args,
         return_type,
@@ -251,12 +249,12 @@ fn codegen_fun(
     module: &mut ObjectModule,
     global_env: &Env,
     malloc_id: FuncId,
-    fun: &lower::Fun,
+    fun: &cfg::Fun,
     fn_builder_ctx: &mut FunctionBuilderContext,
     file: &mut File,
     dump: bool,
 ) {
-    let lower::Fun {
+    let cfg::Fun {
         name,
         args,
         blocks,
@@ -287,14 +285,14 @@ fn codegen_fun(
 
     let mut builder: FunctionBuilder = FunctionBuilder::new(&mut context.func, fn_builder_ctx);
 
-    let mut label_to_block: FxHashMap<lower::BlockIdx, Block> = Default::default();
+    let mut label_to_block: FxHashMap<cfg::BlockIdx, Block> = Default::default();
 
-    for block in blocks.values().filter_map(lower::BlockData::get_block) {
+    for block in blocks.values().filter_map(cfg::BlockData::get_block) {
         let cl_block = builder.create_block();
         label_to_block.insert(block.idx, cl_block);
     }
 
-    let entry_block = *label_to_block.get(&lower::BlockIdx::new(0)).unwrap();
+    let entry_block = *label_to_block.get(&cfg::BlockIdx::new(0)).unwrap();
     builder.switch_to_block(entry_block);
     builder.append_block_params_for_function_params(entry_block);
 
@@ -305,12 +303,12 @@ fn codegen_fun(
         env.add_arg(*arg, val);
     }
 
-    // Declare locals (TODO: we should probably have these readily available in lower::Fun)
+    // Declare locals (TODO: we should probably have these readily available in cfg::Fun)
     let mut declared: FxHashSet<VarId> = Default::default();
-    for lower::Block { stmts, .. } in blocks.values().filter_map(lower::BlockData::get_block) {
+    for cfg::Block { stmts, .. } in blocks.values().filter_map(cfg::BlockData::get_block) {
         for stmt in stmts {
             match stmt {
-                lower::Stmt::Asgn(lower::Asgn { lhs, rhs: _ }) => {
+                cfg::Stmt::Asgn(cfg::Asgn { lhs, rhs: _ }) => {
                     if !declared.contains(lhs) {
                         declared.insert(*lhs);
                         let lhs_cl_var =
@@ -319,13 +317,13 @@ fn codegen_fun(
                         builder.declare_var(lhs_cl_var, lhs_abi_type);
                     }
                 }
-                lower::Stmt::Expr(_) => {}
+                cfg::Stmt::Expr(_) => {}
             }
         }
     }
 
-    for block in blocks.values().filter_map(lower::BlockData::get_block) {
-        let lower::Block {
+    for block in blocks.values().filter_map(cfg::BlockData::get_block) {
+        let cfg::Block {
             idx,
             comment: _,
             stmts,
@@ -337,7 +335,7 @@ fn codegen_fun(
 
         for stmt in stmts {
             match stmt {
-                lower::Stmt::Asgn(lower::Asgn { lhs, rhs }) => {
+                cfg::Stmt::Asgn(cfg::Asgn { lhs, rhs }) => {
                     let (block, val) =
                         codegen_expr(ctx, module, cl_block, &mut builder, &mut env, malloc, rhs);
                     cl_block = block;
@@ -345,7 +343,7 @@ fn codegen_fun(
                     let lhs_cl_var = Variable::new(ctx.get_var(*lhs).get_uniq().0.get() as usize);
                     builder.def_var(lhs_cl_var, val.unwrap());
                 }
-                lower::Stmt::Expr(expr) => {
+                cfg::Stmt::Expr(expr) => {
                     let (block, _) =
                         codegen_expr(ctx, module, cl_block, &mut builder, &mut env, malloc, expr);
                     cl_block = block;
@@ -354,11 +352,11 @@ fn codegen_fun(
         }
 
         match exit {
-            lower::Exit::Return(var) => {
+            cfg::Exit::Return(var) => {
                 let var = env.use_var(ctx, module, &mut builder, *var);
                 builder.ins().return_(&[var]);
             }
-            lower::Exit::Branch {
+            cfg::Exit::Branch {
                 v1,
                 v2,
                 cond,
@@ -390,7 +388,7 @@ fn codegen_fun(
 
                 builder.ins().jump(else_block, &[]);
             }
-            lower::Exit::Jump(label) => {
+            cfg::Exit::Jump(label) => {
                 let cl_block = *label_to_block.get(label).unwrap();
                 // Not sure about the arguments here...
                 builder.ins().jump(cl_block, &[]);
@@ -399,11 +397,11 @@ fn codegen_fun(
     }
 
     for block in blocks.values() {
-        let lower::Block { idx, .. } = match block {
-            lower::BlockData::NA => {
+        let cfg::Block { idx, .. } = match block {
+            cfg::BlockData::NA => {
                 continue;
             }
-            lower::BlockData::Block(block) => block,
+            cfg::BlockData::Block(block) => block,
         };
 
         let cl_block = *label_to_block.get(idx).unwrap();
@@ -434,17 +432,17 @@ fn codegen_expr(
     builder: &mut FunctionBuilder,
     env: &mut Env,
     malloc: FuncRef,
-    rhs: &lower::Expr,
+    rhs: &cfg::Expr,
 ) -> (Block, Option<Value>) {
     match rhs {
-        lower::Expr::Atom(lower::Atom::Unit) => (block, Some(builder.ins().iconst(I64, 0))),
-        lower::Expr::Atom(lower::Atom::Int(i)) => (block, Some(builder.ins().iconst(I64, *i))),
-        lower::Expr::Atom(lower::Atom::Float(f)) => (block, Some(builder.ins().f64const(*f))),
-        lower::Expr::Atom(lower::Atom::Var(var)) => {
+        cfg::Expr::Atom(cfg::Atom::Unit) => (block, Some(builder.ins().iconst(I64, 0))),
+        cfg::Expr::Atom(cfg::Atom::Int(i)) => (block, Some(builder.ins().iconst(I64, *i))),
+        cfg::Expr::Atom(cfg::Atom::Float(f)) => (block, Some(builder.ins().f64const(*f))),
+        cfg::Expr::Atom(cfg::Atom::Var(var)) => {
             (block, Some(env.use_var(ctx, module, builder, *var)))
         }
 
-        lower::Expr::IBinOp(BinOp { op, arg1, arg2 }) => {
+        cfg::Expr::IBinOp(BinOp { op, arg1, arg2 }) => {
             let arg1 = env.use_var(ctx, module, builder, *arg1);
             let arg2 = env.use_var(ctx, module, builder, *arg2);
             let val = match op {
@@ -456,7 +454,7 @@ fn codegen_expr(
             (block, Some(val))
         }
 
-        lower::Expr::FBinOp(BinOp { op, arg1, arg2 }) => {
+        cfg::Expr::FBinOp(BinOp { op, arg1, arg2 }) => {
             let arg1 = env.use_var(ctx, module, builder, *arg1);
             let arg2 = env.use_var(ctx, module, builder, *arg2);
             let val = match op {
@@ -468,17 +466,17 @@ fn codegen_expr(
             (block, Some(val))
         }
 
-        lower::Expr::Neg(var) => {
+        cfg::Expr::Neg(var) => {
             let arg = env.use_var(ctx, module, builder, *var);
             (block, Some(builder.ins().ineg(arg)))
         }
 
-        lower::Expr::FNeg(var) => {
+        cfg::Expr::FNeg(var) => {
             let arg = env.use_var(ctx, module, builder, *var);
             (block, Some(builder.ins().fneg(arg)))
         }
 
-        lower::Expr::App(fun, args, ret_type) => {
+        cfg::Expr::App(fun, args, ret_type) => {
             let params: Vec<AbiParam> = args
                 .iter()
                 .map(|arg| {
@@ -510,7 +508,7 @@ fn codegen_expr(
             (block, Some(builder.inst_results(call)[0]))
         }
 
-        lower::Expr::Tuple { len } => {
+        cfg::Expr::Tuple { len } => {
             let malloc_arg = builder
                 .ins()
                 .iconst(I64, *len as i64 * i64::from(WORD_SIZE));
@@ -519,7 +517,7 @@ fn codegen_expr(
             (block, Some(tuple))
         }
 
-        lower::Expr::TuplePut(tuple, idx, val) => {
+        cfg::Expr::TuplePut(tuple, idx, val) => {
             let tuple = env.use_var(ctx, module, builder, *tuple);
             let arg = env.use_var(ctx, module, builder, *val);
             builder.ins().store(
@@ -531,7 +529,7 @@ fn codegen_expr(
             (block, None)
         }
 
-        lower::Expr::TupleGet(tuple, idx) => {
+        cfg::Expr::TupleGet(tuple, idx) => {
             let tuple_type = ctx.var_type(*tuple);
             let elem_type = match &*tuple_type {
                 typecheck::Type::Tuple(args) => rep_type_abi(RepType::from(&args[*idx])),
@@ -562,7 +560,7 @@ fn codegen_expr(
             (block, Some(val))
         }
 
-        lower::Expr::ArrayAlloc { len } => {
+        cfg::Expr::ArrayAlloc { len } => {
             let len_val = env.use_var(ctx, module, builder, *len);
             let word_size = builder.ins().iconst(I64, i64::from(WORD_SIZE));
             let size_val = builder.ins().imul(len_val, word_size);
@@ -570,7 +568,7 @@ fn codegen_expr(
             (block, Some(builder.inst_results(malloc_call)[0]))
         }
 
-        lower::Expr::ArrayGet(array, idx) => {
+        cfg::Expr::ArrayGet(array, idx) => {
             let var_type = ctx.var_type(*array);
             let elem_type = match &*var_type {
                 typecheck::Type::Array(elem_type) => rep_type_abi(RepType::from(&**elem_type)),
@@ -592,7 +590,7 @@ fn codegen_expr(
             )
         }
 
-        lower::Expr::ArrayPut(array, idx, val) => {
+        cfg::Expr::ArrayPut(array, idx, val) => {
             let array = env.use_var(ctx, module, builder, *array);
             let idx = env.use_var(ctx, module, builder, *idx);
             let val = env.use_var(ctx, module, builder, *val);
