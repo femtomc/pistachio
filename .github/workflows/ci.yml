@@ -15,8 +15,14 @@ jobs:
         with:
           profile: minimal
           toolchain: stable
-      - run: cargo build --release
-      - run: cargo test --release
+      - run: cargo build --debug
+      - run: cargo test --all --verbose
+
+      - name: Install reference compiler (ocaml)
+        run: sudo apt-get install ocaml
+
+      - name: Run test programs
+        run: RUST_BACKTRACE=1 ./target/debug/test
 
   rustfmt:
     name: Rustfmt
