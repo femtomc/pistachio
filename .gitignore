@@ -5,3 +5,4 @@
 a.out
 _test
 .mc-compiled
+Cargo.lock
