@@ -1,0 +1,7 @@
+/target
+*.o
+*.cmi
+*.cmo
+a.out
+_test
+.mc-compiled
