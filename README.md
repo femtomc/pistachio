@@ -7,7 +7,7 @@
 
 [![CI](https://img.shields.io/github/workflow/status/femtomc/mincaml/CI?style=for-the-badge)](https://github.com/femtomc/mincaml/actions?query=workflow%3ACI)
 
-This is a fork of [this Rust implementation of `mincaml`](https://github.com/osa1/mincaml), updated to recent versions of [cranelift](https://github.com/bytecodealliance/wasmtime/tree/main/cranelift).
+This is a fork of [this Rust implementation of `mincaml`](https://github.com/osa1/mincaml) - a compiler for a call-by-value ML-like language, updated to recent versions of [cranelift](https://github.com/bytecodealliance/wasmtime/tree/main/cranelift).
 
 It appears the original author has abandoned this project (and is on to better things!), so I'm going to pick it up and try and do some fun stuff with it as I play around with functional language compilation.
 
