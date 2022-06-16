@@ -1,5 +1,5 @@
 [package]
-name = "mincaml"
+name = "wowcaml"
 version = "0.1.0"
 authors = ["McCoy R. Becker <mccoyb@mit.edu>, Ömer Sinan Ağacan <omeragacan@gmail.com>"]
 edition = "2018"
