@@ -1,7 +1,5 @@
-
-use chumsky::{prelude::*};
+use chumsky::prelude::*;
 use std::str::FromStr;
-
 
 use lexgen::lexer;
 

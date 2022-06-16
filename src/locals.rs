@@ -1,7 +1,6 @@
 use fxhash::FxHashMap;
 use std::hash::Hash;
 
-
 pub struct Locals<K, V>
 where
     K: Clone + Hash + Eq,

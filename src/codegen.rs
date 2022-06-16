@@ -14,7 +14,6 @@ use cranelift_object::{ObjectBuilder, ObjectModule, ObjectProduct};
 use std::fs::File;
 use std::io::Write;
 
-
 use fxhash::{FxHashMap, FxHashSet};
 
 use crate::cg_types::RepType;
