@@ -172,9 +172,9 @@ fn link(path: &str, out_dir: &str, object_code: ObjectCode) -> i32 {
         .write_all(&object_code)
         .unwrap();
 
-    // Build RTS
+    // Build runtime
     let output = Command::new("clang")
-        .args(&["rts.c", "-c", "-o", &format!("{}/rts.o", out_dir)])
+        .args(&["runtime.c", "-c", "-o", &format!("{}/runtime.o", out_dir)])
         .spawn()
         .unwrap()
         .wait_with_output()
@@ -186,7 +186,7 @@ fn link(path: &str, out_dir: &str, object_code: ObjectCode) -> i32 {
     let output = Command::new("clang")
         .args(&[
             &o_file_name,
-            "rts.o",
+            "runtime.o",
             "-o",
             file_stem,
             "-lm", // link math library

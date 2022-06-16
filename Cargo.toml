@@ -5,7 +5,7 @@ authors = ["McCoy R. Becker <mccoyb@mit.edu>, Ömer Sinan Ağacan <omeragacan@gm
 edition = "2018"
 
 [lib]
-name = "libmc"
+name = "libwml"
 path = "src/lib.rs"
 
 [[bin]]
