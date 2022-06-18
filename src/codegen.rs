@@ -19,6 +19,7 @@ use cranelift_object::{ObjectBuilder, ObjectModule, ObjectProduct};
 use fxhash::{FxHashMap, FxHashSet};
 use std::fs::File;
 use std::io::Write;
+use target_lexicon::Triple;
 
 pub fn codegen(
     ctx: &mut Ctx,
@@ -32,7 +33,7 @@ pub fn codegen(
     let shared_builder = settings::builder();
     let shared_flags = settings::Flags::new(shared_builder);
     let _codegen_flags: settings::Flags = settings::Flags::new(settings::builder());
-    let isa_builder = isa::lookup_by_name("x86_64-apple-darwin").unwrap();
+    let isa_builder = isa::lookup(Triple::host()).unwrap();
     let isa = isa_builder.finish(shared_flags).unwrap();
     let mut module: ObjectModule = ObjectModule::new(
         ObjectBuilder::new(
@@ -43,7 +44,7 @@ pub fn codegen(
         .unwrap(),
     );
 
-    let mut fn_builder_ctx: FunctionBuilderContext = FunctionBuilderContext::new();
+    let mut fn_builder_ctx = FunctionBuilderContext::new();
 
     // Declare malloc at module-level and pass the id to code gen to be able to generate malloc
     // calls.
