@@ -174,7 +174,12 @@ fn link(path: &str, out_dir: &str, object_code: ObjectCode) -> i32 {
 
     // Build runtime
     let output = Command::new("clang")
-        .args(&["runtime.c", "-c", "-o", &format!("{}/runtime.o", out_dir)])
+        .args(&[
+            "runtime.c",
+            "-c",
+            "-o",
+            &format!("{}/runtime.o", out_dir),
+        ])
         .spawn()
         .unwrap()
         .wait_with_output()
@@ -185,6 +190,7 @@ fn link(path: &str, out_dir: &str, object_code: ObjectCode) -> i32 {
     // Link
     let output = Command::new("clang")
         .args(&[
+            "-no-pie",
             &o_file_name,
             "runtime.o",
             "-o",
@@ -198,6 +204,5 @@ fn link(path: &str, out_dir: &str, object_code: ObjectCode) -> i32 {
         .unwrap();
 
     assert!(output.status.success());
-
-    0
+    return 0;
 }
