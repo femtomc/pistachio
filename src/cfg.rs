@@ -251,7 +251,7 @@ impl Asgn {
                 var_type.pp(w)?;
             }
             None => {
-                w.write_str("\\{?\\}")?;
+                w.write_str("{{?}}")?;
             }
         }
         w.write_str(" = ")?;

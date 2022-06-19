@@ -172,7 +172,13 @@ fn link(path: &str, out_dir: &str, object_code: ObjectCode) -> i32 {
 
     // Build runtime
     let output = Command::new("clang")
-        .args(&["runtime.c", "-c", "-o", &format!("{}/runtime.o", out_dir)])
+        .args(&[
+            "runtime.c",
+            "-g",
+            "-c",
+            "-o",
+            &format!("{}/runtime.o", out_dir),
+        ])
         .spawn()
         .unwrap()
         .wait_with_output()
