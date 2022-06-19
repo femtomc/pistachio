@@ -1,6 +1,6 @@
-use crate::ast::ParsedExpr;
-use crate::common::{Cmp, FloatBinOp, IntBinOp};
-use crate::lexer::Token;
+use crate::frontend::ast::ParsedExpr;
+use crate::frontend::common::{Cmp, FloatBinOp, IntBinOp};
+use crate::frontend::lexer::Token;
 use parsegen::parser;
 
 parser! {

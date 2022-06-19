@@ -1,6 +1,6 @@
-use crate::common::*;
-use crate::ctx::{Ctx, VarId};
-use crate::var::CompilerPhase;
+use crate::frontend::common::*;
+use crate::frontend::ctx::{Ctx, VarId};
+use crate::frontend::var::CompilerPhase;
 
 // Expressions after interning
 pub type Expr = Expr_<VarId>;

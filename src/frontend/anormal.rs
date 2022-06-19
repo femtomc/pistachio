@@ -1,8 +1,8 @@
-use crate::ast;
-use crate::common::*;
-use crate::ctx::{Ctx, TypeId, VarId};
-use crate::typecheck::Type;
-use crate::var::CompilerPhase;
+use crate::frontend::ast;
+use crate::frontend::common::*;
+use crate::frontend::ctx::{Ctx, TypeId, VarId};
+use crate::frontend::typecheck::Type;
+use crate::frontend::var::CompilerPhase;
 
 #[derive(Debug)]
 pub enum Expr {

@@ -1,15 +1,15 @@
-use crate::anormal;
-use crate::cfg::*;
-use crate::common::{BinOp, Cmp, IntBinOp};
-use crate::ctx::{Ctx, VarId};
-use crate::typecheck::Type;
-use crate::var::CompilerPhase::ClosureConvert;
+use crate::frontend::anormal;
+use crate::frontend::cfg::*;
+use crate::frontend::common::{BinOp, Cmp, IntBinOp};
+use crate::frontend::ctx::{Ctx, VarId};
+use crate::frontend::typecheck::Type;
+use crate::frontend::var::CompilerPhase::ClosureConvert;
 use cranelift_entity::PrimaryMap;
 use fxhash::FxHashSet;
 
 // Used when debugging
 #[allow(unused_imports)]
-use crate::utils;
+use crate::frontend::utils;
 
 #[derive(Debug, Clone)]
 enum Sequel {

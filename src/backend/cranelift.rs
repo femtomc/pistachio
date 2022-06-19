@@ -1,8 +1,8 @@
-use crate::cfg::{self, RepType};
-use crate::common::{BinOp, Cmp, FloatBinOp, IntBinOp};
-use crate::ctx::{Ctx, VarId};
-use crate::lowering;
-use crate::typecheck;
+use crate::frontend::cfg::{self, RepType};
+use crate::frontend::common::{BinOp, Cmp, FloatBinOp, IntBinOp};
+use crate::frontend::ctx::{Ctx, VarId};
+use crate::frontend::lowering;
+use crate::frontend::typecheck;
 use cranelift_codegen::entity::EntityRef;
 use cranelift_codegen::ir::condcodes::{FloatCC, IntCC};
 use cranelift_codegen::ir::entities::{Block, FuncRef, SigRef, Value};

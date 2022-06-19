@@ -1,6 +1,5 @@
 use chumsky::prelude::*;
 use std::str::FromStr;
-
 use lexgen::lexer;
 
 #[derive(Debug, PartialEq, Clone)]

@@ -1,7 +1,7 @@
-use crate::common::*;
-use crate::common::{BinOp, Cmp, FloatBinOp, IntBinOp};
-use crate::ctx::{Ctx, VarId};
-use crate::typecheck::Type;
+use crate::frontend::common::*;
+use crate::frontend::common::{BinOp, Cmp, FloatBinOp, IntBinOp};
+use crate::frontend::ctx::{Ctx, VarId};
+use crate::frontend::typecheck::Type;
 use cranelift_entity::{entity_impl, PrimaryMap};
 use std::fmt;
 

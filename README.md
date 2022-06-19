@@ -11,6 +11,7 @@ This is a fork of [this Rust implementation of `mincaml`](https://github.com/osa
 
 It appears the original author has abandoned this project (and is on to better things!), so I'm going to pick it up and try and do some fun stuff with it as I play around with functional language compilation.
 
+- [ ] Implement an LLVM backend.
 - [ ] [First, I should probably make it properly polymorphic.](https://en.wikipedia.org/wiki/Hindley%E2%80%93Milner_type_system)
 - [ ] Eventually, I'll probably add an LLVM backend through [inkwell](https://github.com/TheDan64/inkwell).
 - [ ] Maybe, just maybe -- I'll add a GC!

@@ -1,36 +1,28 @@
 #![feature(box_patterns)]
 
-mod anormal;
-mod ast;
-mod cfg;
-mod codegen;
-mod common;
-mod ctx;
-pub mod diagnostics;
-mod interner;
-mod lexer;
-mod locals;
-mod lowering;
-mod parser;
-mod typecheck;
-mod utils;
-mod var;
+mod backend;
+mod frontend;
 
-use anormal::anormal;
-use codegen::codegen;
-use lexer::{tokenize, Token};
-use lowering::lower_pgm;
-use typecheck::typecheck_pgm;
-
+use frontend::anormal::anormal;
+use frontend::lexer::{tokenize, Token};
+use frontend::lowering::lower_pgm;
+use frontend::typecheck::typecheck_pgm;
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 use std::process::Command;
 use std::time::{Duration, Instant};
 
+// Control the code generation path.
+#[cfg(feature = "cranelift-codegen")]
+use backend::cranelift::codegen;
+
+#[cfg(feature = "llvm-codegen")]
+use backend::llvm::codegen;
+
 #[cfg(debug_assertions)]
 #[global_allocator]
-static A: diagnostics::AllocCounter = diagnostics::AllocCounter;
+static A: frontend::diagnostics::AllocCounter = frontend::diagnostics::AllocCounter;
 
 #[derive(Debug)]
 struct PassStats {
@@ -44,11 +36,11 @@ fn record_pass_stats<A, F: FnOnce() -> A>(
     pass_name: &'static str,
     pass: F,
 ) -> A {
-    let allocs_before = diagnostics::get_allocated();
+    let allocs_before = frontend::diagnostics::get_allocated();
     let start_time = Instant::now();
     let ret = pass();
     let elapsed = start_time.elapsed();
-    let allocs_after = diagnostics::get_allocated();
+    let allocs_after = frontend::diagnostics::get_allocated();
     stats.push(PassStats {
         name: pass_name,
         time: elapsed,
@@ -80,7 +72,7 @@ fn compile_expr(
     let mut ctx = Default::default();
 
     let expr = match record_pass_stats(&mut pass_stats, "parsing", || {
-        parser::Expr::parse(tokens.into_iter().map(Ok::<_, ()>))
+        frontend::parser::Expr::parse(tokens.into_iter().map(Ok::<_, ()>))
     }) {
         Err(err) => {
             println!("Parser error: {:#?}", err);

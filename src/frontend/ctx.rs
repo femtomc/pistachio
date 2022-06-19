@@ -1,8 +1,7 @@
-use crate::cfg::RepType;
-use crate::interner::{InternId, InternTable};
-use crate::typecheck::{TyVar, Type};
-use crate::var::{CompilerPhase, Uniq, Var};
-
+use crate::frontend::cfg::RepType;
+use crate::frontend::interner::{InternId, InternTable};
+use crate::frontend::typecheck::{TyVar, Type};
+use crate::frontend::var::{CompilerPhase, Uniq, Var};
 use fxhash::FxHashMap;
 use std::num::NonZeroU32;
 use std::rc::Rc;
