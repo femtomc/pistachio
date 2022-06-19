@@ -1,6 +1,6 @@
 use chumsky::prelude::*;
-use std::str::FromStr;
 use lexgen::lexer;
+use std::str::FromStr;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Token {
