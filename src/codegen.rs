@@ -32,7 +32,9 @@ pub fn codegen(
     // gets its own FunctionBuilder.
     let shared_builder = settings::builder();
     let shared_flags = settings::Flags::new(shared_builder);
-    let _codegen_flags: settings::Flags = settings::Flags::new(settings::builder());
+    shared_flags.enable_verifier();
+    shared_flags.is_pic();
+    shared_flags.use_colocated_libcalls();
     let isa_builder = isa::lookup(Triple::host()).unwrap();
     let isa = isa_builder.finish(shared_flags).unwrap();
     let mut module: ObjectModule = ObjectModule::new(
@@ -304,7 +306,8 @@ fn codegen_fun(
         env.add_arg(*arg, val);
     }
 
-    // Declare locals (TODO: we should probably have these readily available in cfg::Fun)
+    // Declare locals.
+    // (TODO: we should probably have these readily available in cfg::Fun)
     let mut declared: FxHashSet<VarId> = Default::default();
     for cfg::Block { stmts, .. } in blocks.values().filter_map(cfg::BlockData::get_block) {
         for stmt in stmts {

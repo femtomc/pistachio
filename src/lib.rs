@@ -111,8 +111,6 @@ fn compile_expr(
 
     if dump_cc {
         let mut file = File::create(format!("{}/{}", out_dir, "emitted.cfg")).unwrap();
-        file.write_all(b"///\n/// Closure conversion\n///\n");
-
         let mut s = String::new();
         for fun in &funs {
             fun.pp(&ctx, &mut s).unwrap();
@@ -185,7 +183,6 @@ fn link(path: &str, out_dir: &str, object_code: ObjectCode) -> i32 {
     // Link
     let output = Command::new("clang")
         .args(&[
-            "-no-pie",
             &o_file_name,
             "runtime.o",
             "-o",
