@@ -343,7 +343,7 @@ parser! {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::lexer::tokenize;
+    use crate::frontend::lexer::tokenize;
 
     fn parse(s: &str) -> ParsedExpr {
         let tokens = tokenize(s).unwrap();
