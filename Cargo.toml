@@ -9,8 +9,8 @@ name = "libwml"
 path = "src/lib.rs"
 
 [[bin]]
-name = "mc"
-path = "bin/main.rs"
+name = "wmlcc"
+path = "bin/compiler.rs"
 
 [[bin]]
 name = "test"
