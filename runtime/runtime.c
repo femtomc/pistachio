@@ -1,10 +1,7 @@
 #include <inttypes.h>
 #include <math.h>
 #include <stdio.h>
-
-typedef struct FunctionClosure_ {
-  void *function;
-} FunctionClosure;
+#include "runtime.h"
 
 // int return type because we don't support not returning! Unit is 0.
 int64_t mc_print_int_f(FunctionClosure *self, int64_t i) {

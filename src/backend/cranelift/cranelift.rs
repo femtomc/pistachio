@@ -11,7 +11,7 @@ use cranelift_codegen::ir::MemFlags;
 use cranelift_codegen::ir::{AbiParam, InstBuilder, Signature};
 use cranelift_codegen::isa;
 use cranelift_codegen::isa::CallConv;
-use cranelift_codegen::settings::{self};
+use cranelift_codegen::settings::{self, Configurable};
 use cranelift_codegen::verifier::verify_function;
 use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext, Variable};
 use cranelift_module::{default_libcall_names, DataId, FuncId, Linkage, Module};
@@ -624,11 +624,11 @@ pub fn codegen(
 ) -> Vec<u8> {
     // Module and FunctionBuilderContext are used for the whole compilation unit. Each function
     // gets its own FunctionBuilder.
-    let shared_builder = settings::builder();
+    let mut shared_builder = settings::builder();
+    shared_builder.set("is_pic", "true");
     let shared_flags = settings::Flags::new(shared_builder);
     shared_flags.enable_verifier();
-    shared_flags.is_pic();
-    shared_flags.use_colocated_libcalls();
+    assert!(shared_flags.is_pic());
     let isa_builder = isa::lookup(Triple::host()).unwrap();
     let isa = isa_builder.finish(shared_flags).unwrap();
     let mut module: ObjectModule = ObjectModule::new(
