@@ -21,73 +21,6 @@ use std::fs::File;
 use std::io::Write;
 use target_lexicon::Triple;
 
-pub fn codegen(
-    ctx: &mut Ctx,
-    funs: &[cfg::Fun],
-    main_id: VarId,
-    out_dir: &str,
-    dump: bool,
-) -> Vec<u8> {
-    // Module and FunctionBuilderContext are used for the whole compilation unit. Each function
-    // gets its own FunctionBuilder.
-    let shared_builder = settings::builder();
-    let shared_flags = settings::Flags::new(shared_builder);
-    shared_flags.enable_verifier();
-    shared_flags.is_pic();
-    shared_flags.use_colocated_libcalls();
-    let isa_builder = isa::lookup(Triple::host()).unwrap();
-    let isa = isa_builder.finish(shared_flags).unwrap();
-    let mut module: ObjectModule = ObjectModule::new(
-        ObjectBuilder::new(
-            isa,
-            [1, 2, 3, 4, 5, 6, 7, 8], // TODO: what is this?
-            default_libcall_names(),
-        )
-        .unwrap(),
-    );
-
-    let mut fn_builder_ctx = FunctionBuilderContext::new();
-
-    // Declare malloc at module-level and pass the id to code gen to be able to generate malloc
-    // calls.
-    let malloc_id = declare_malloc(&mut module);
-
-    // Global env is not mutable as we never add anything to it. Declarations in basic blocks are
-    // done directly using the FunctionBuilder. When a variable isn't bound in 'env' it assumes
-    // that the variable has already been declared directly using the FunctionBuilder.
-    //
-    // For function arguments we clone it in every function, add the arguments, and then keep using
-    // it in an immutable way.
-    let (env, main_fun_id) = init_module_env(ctx, &mut module, funs, main_id);
-
-    // Generate code for functions
-    let mut file = File::create(format!("{}/{}", out_dir, "emitted.clif")).unwrap();
-    for fun in funs {
-        codegen_fun(
-            ctx,
-            &mut module,
-            &env,
-            malloc_id,
-            fun,
-            &mut fn_builder_ctx,
-            &mut file,
-            dump,
-        );
-    }
-
-    // Generate main
-    make_main(
-        &mut module,
-        &mut fn_builder_ctx,
-        main_fun_id,
-        &mut file,
-        dump,
-    );
-
-    let object: ObjectProduct = module.finish();
-    object.emit().unwrap()
-}
-
 // We only support such platforms.
 const WORD_SIZE: u8 = 8;
 
@@ -598,7 +531,7 @@ fn codegen_expr(
             let array = env.use_var(ctx, module, builder, *array);
             let idx = env.use_var(ctx, module, builder, *idx);
             let val = env.use_var(ctx, module, builder, *val);
-            let word_size = builder.ins().iconst(I64, 8);
+            let word_size = builder.ins().iconst(I64, i64::from(WORD_SIZE));
             let offset = builder.ins().imul(idx, word_size);
             let store_target = builder.ins().iadd(array, offset);
             builder.ins().store(MemFlags::new(), val, store_target, 0);
@@ -675,4 +608,144 @@ fn float_cond(cond: Cmp) -> FloatCC {
         Cmp::GreaterThan => FloatCC::GreaterThan,
         Cmp::GreaterThanOrEqual => FloatCC::GreaterThanOrEqual,
     }
+}
+
+/////
+///// Code generation toplevel.
+/////
+
+// Ahead of time codepath.
+pub fn codegen(
+    ctx: &mut Ctx,
+    funs: &[cfg::Fun],
+    main_id: VarId,
+    out_dir: &str,
+    dump: bool,
+) -> Vec<u8> {
+    // Module and FunctionBuilderContext are used for the whole compilation unit. Each function
+    // gets its own FunctionBuilder.
+    let shared_builder = settings::builder();
+    let shared_flags = settings::Flags::new(shared_builder);
+    shared_flags.enable_verifier();
+    shared_flags.is_pic();
+    shared_flags.use_colocated_libcalls();
+    let isa_builder = isa::lookup(Triple::host()).unwrap();
+    let isa = isa_builder.finish(shared_flags).unwrap();
+    let mut module: ObjectModule = ObjectModule::new(
+        ObjectBuilder::new(
+            isa,
+            [1, 2, 3, 4, 5, 6, 7, 8], // TODO: what is this?
+            default_libcall_names(),
+        )
+        .unwrap(),
+    );
+
+    let mut fn_builder_ctx = FunctionBuilderContext::new();
+
+    // Declare malloc at module-level and pass the id to code gen to be able to generate malloc
+    // calls.
+    let malloc_id = declare_malloc(&mut module);
+
+    // Global env is not mutable as we never add anything to it. Declarations in basic blocks are
+    // done directly using the FunctionBuilder. When a variable isn't bound in 'env' it assumes
+    // that the variable has already been declared directly using the FunctionBuilder.
+    //
+    // For function arguments we clone it in every function, add the arguments, and then keep using
+    // it in an immutable way.
+    let (env, main_fun_id) = init_module_env(ctx, &mut module, funs, main_id);
+
+    // Generate code for functions
+    let mut file = File::create(format!("{}/{}", out_dir, "emitted.clif")).unwrap();
+    for fun in funs {
+        codegen_fun(
+            ctx,
+            &mut module,
+            &env,
+            malloc_id,
+            fun,
+            &mut fn_builder_ctx,
+            &mut file,
+            dump,
+        );
+    }
+
+    // Generate main
+    make_main(
+        &mut module,
+        &mut fn_builder_ctx,
+        main_fun_id,
+        &mut file,
+        dump,
+    );
+
+    let object: ObjectProduct = module.finish();
+    object.emit().unwrap()
+}
+
+// Just-in-time codepath.
+pub fn codegen_jit(
+    ctx: &mut Ctx,
+    funs: &[cfg::Fun],
+    main_id: VarId,
+    out_dir: &str,
+    dump: bool,
+) -> Vec<u8> {
+    // Module and FunctionBuilderContext are used for the whole compilation unit. Each function
+    // gets its own FunctionBuilder.
+    let shared_builder = settings::builder();
+    let shared_flags = settings::Flags::new(shared_builder);
+    shared_flags.enable_verifier();
+    shared_flags.is_pic();
+    shared_flags.use_colocated_libcalls();
+    let isa_builder = isa::lookup(Triple::host()).unwrap();
+    let isa = isa_builder.finish(shared_flags).unwrap();
+    let mut module: ObjectModule = ObjectModule::new(
+        ObjectBuilder::new(
+            isa,
+            [1, 2, 3, 4, 5, 6, 7, 8], // TODO: what is this?
+            default_libcall_names(),
+        )
+        .unwrap(),
+    );
+
+    let mut fn_builder_ctx = FunctionBuilderContext::new();
+
+    // Declare malloc at module-level and pass the id to code gen to be able to generate malloc
+    // calls.
+    let malloc_id = declare_malloc(&mut module);
+
+    // Global env is not mutable as we never add anything to it. Declarations in basic blocks are
+    // done directly using the FunctionBuilder. When a variable isn't bound in 'env' it assumes
+    // that the variable has already been declared directly using the FunctionBuilder.
+    //
+    // For function arguments we clone it in every function, add the arguments, and then keep using
+    // it in an immutable way.
+    let (env, main_fun_id) = init_module_env(ctx, &mut module, funs, main_id);
+
+    // Generate code for functions
+    let mut file = File::create(format!("{}/{}", out_dir, "emitted.clif")).unwrap();
+    for fun in funs {
+        codegen_fun(
+            ctx,
+            &mut module,
+            &env,
+            malloc_id,
+            fun,
+            &mut fn_builder_ctx,
+            &mut file,
+            dump,
+        );
+    }
+
+    // Generate main
+    make_main(
+        &mut module,
+        &mut fn_builder_ctx,
+        main_fun_id,
+        &mut file,
+        dump,
+    );
+
+    let object: ObjectProduct = module.finish();
+    object.emit().unwrap()
 }

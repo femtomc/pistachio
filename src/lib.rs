@@ -1,3 +1,5 @@
+#![doc = include_str!("../README.md")]
+#![warn(rustdoc::missing_doc_code_examples)]
 #![feature(box_patterns)]
 
 mod backend;
