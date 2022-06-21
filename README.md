@@ -30,7 +30,7 @@ cargo build
 
 After building, you should be able to use the compiler on `ubuntu-latest`, even `apple-darwin`.
 
-Assuming you have a reference `ocamlc`, you can run all the test programs with
+Assuming you have a reference `ocamlc` on `$PATH`, you can run all the test programs with
 
 ```
 ./target/debug/test
