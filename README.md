@@ -24,7 +24,7 @@ It appears the original author has abandoned this project (and is on to better t
 
 Build the compiler -- this will place `wmlcc` into `target`.
 
-```
+```ignore
 cargo build
 ```
 
@@ -32,6 +32,6 @@ After building, you should be able to use the compiler on `ubuntu-latest`, even 
 
 Assuming you have a reference `ocamlc` on `$PATH`, you can run all the test programs with
 
-```
+```ignore
 ./target/debug/test
 ```
