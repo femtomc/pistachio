@@ -19,3 +19,19 @@ It appears the original author has abandoned this project (and is on to better t
 - [ ] [But `System F` seems to be a concise language core...](https://www.youtube.com/watch?v=u9bY0Bc_lXw)
 - [ ] [Even Simon admits that a strict Haskell might have been good...](https://www.youtube.com/watch?v=re96UgMk6GQ)
 - [ ] [Also, Koka seems to be built on top of `System F`...](https://www.youtube.com/watch?v=6OFhD_mHtKA)
+
+## Usage
+
+Build the compiler -- this will place `wmlcc` into `target`.
+
+```
+cargo build
+```
+
+After building, you should be able to use the compiler on `ubuntu-latest`, even `apple-darwin`.
+
+Assuming you have a reference `ocamlc`, you can run all the test programs with
+
+```
+./target/debug/test
+```
