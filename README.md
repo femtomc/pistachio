@@ -1,20 +1,10 @@
 # pistachio
 
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,300;1,400;1,500;1,600;1,700;1,800&display=swap');
-</style> 
-
-<div style="font-family: Open Sans; padding: 0.5em 0.5em; background:#f9f9ff; border: .5px solid #559;">
-<b>Abstract</b>
-
 I want to learn about how theorem provers and dependently typed languages are implemented. This is a little repo for experimentation.
-
-<b>Reference tutorials</b>
 
 - [elaboration-zoo](https://github.com/AndrasKovacs/elaboration-zoo)
 - [pi-forall](https://github.com/sweirich/pi-forall)
 - [tartlet](https://davidchristiansen.dk/tutorials/nbe/)
-</div>
 
 ## Why is this?
 
