@@ -6,6 +6,10 @@ I want to learn about how theorem provers and dependently typed languages are im
 - [pi-forall](https://github.com/sweirich/pi-forall)
 - [tartlet](https://davidchristiansen.dk/tutorials/nbe/)
 
+**Exploration List**:
+
+- [ ] Likely, I'll start with `tartlet` in Rust, and then attempt to explore beyond.
+
 ## Why is this?
 
 When it comes to dependent types, my main question is about runtime performance. Do dependent types provide a substrate for communicating with the compiler in a direct way? More generally, is it possible to construct a language system where metaprograms (optimizers, program transformers, etc) are also specified and checked?
