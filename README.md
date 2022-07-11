@@ -10,6 +10,7 @@ I want to learn about how theorem provers and dependently typed languages are im
 - [elaboration-zoo](https://github.com/AndrasKovacs/elaboration-zoo)
 - [pi-forall](https://github.com/sweirich/pi-forall)
 - [tartlet](https://davidchristiansen.dk/tutorials/nbe/)
+- [Victor Maia's post on a small theorem prover](https://medium.com/@maiavictor/towards-a-simple-theorem-prover-5005a1e66a6f)
 
 **Exploration List**:
 
