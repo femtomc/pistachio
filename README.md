@@ -5,8 +5,6 @@
 </p>
 <br>
 
-> cargo run repl
-
 I want to learn about how theorem provers and dependently typed languages are implemented. This is a little repo for experimentation.
 
 - [elaboration-zoo](https://github.com/AndrasKovacs/elaboration-zoo)
