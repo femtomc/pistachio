@@ -19,12 +19,13 @@ where
             let report = Report::build(ReportKind::Error, (), e.span().start);
 
             let report = match e.reason() {
-                chumsky::error::SimpleReason::Unclosed { span: _, delimiter } => {
-                    report.with_message(format!(
-                        "Unclosed delimiter {}",
-                        delimiter.fg(Color::Yellow)
-                    ))
-                }
+                chumsky::error::SimpleReason::Unclosed {
+                    span: _,
+                    delimiter,
+                } => report.with_message(format!(
+                    "Unclosed delimiter {}",
+                    delimiter.fg(Color::Yellow)
+                )),
                 chumsky::error::SimpleReason::Unexpected => report
                     .with_message(format!(
                         "{}, expected one of the following elements:\n\t{}",
@@ -295,16 +296,16 @@ fn lexer() -> impl Parser<char, Vec<(Token, Span)>, Error = Simple<char>> {
 fn parser(
 ) -> impl Parser<Token, Box<Spanned<Expr>>, Error = Simple<Token>> + Clone {
     recursive(|expr| {
-        let ident_ = select! { Token::Ident(ident) => ident }
-            .labelled("Identifier");
+        let ident_ =
+            select! { Token::Ident(ident) => ident }.labelled("Identifier");
 
         let lvar_ = select! {
             Token::Ident(ident) => Expr::LVar(ident),
         }
         .labelled("LVar");
 
-        let llit_ = select! { Token::Literal(v) => Expr::LInt(v) }
-            .labelled("Literal");
+        let llit_ =
+            select! { Token::Literal(v) => Expr::LInt(v) }.labelled("Literal");
 
         let labs_ = ident_
             .then_ignore(just(Token::Dot))
