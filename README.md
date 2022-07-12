@@ -21,6 +21,7 @@ I want to learn about how theorem provers and dependently typed languages are im
 - [ ] Why [normalization by evaluation](https://en.wikipedia.org/wiki/Normalisation_by_evaluation)?
 - [ ] [Does exposing interfaces to the elaborator enable typed metaprogramming?](https://docs.idris-lang.org/en/latest/elaboratorReflection/elabReflection.html)
 - [ ] [What are the standard compilation techniques for a dependently typed language? Do they differ from normal functional techniques?](https://github.com/femtomc/wowcaml)
+- [ ] How do you compile elaborator strategies? [Can you stage the interpreter?](https://dl.acm.org/doi/10.1145/3428232)
 
 ## Why is this?
 
