@@ -44,4 +44,4 @@ jobs:
           toolchain: nightly
           components: clippy
 
-      - run: cargo clippy -- -D warnings
+      - run: cargo clippy
