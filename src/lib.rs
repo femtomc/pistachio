@@ -332,7 +332,6 @@ mod tests {
     fn parser_2() {
         let test_str = "let z = 10 in (x.x z)";
         let (tokens, errs) = lexer().parse_recovery(test_str);
-        println!("{:?}", tokens);
         assert!(errs.is_empty());
         let len = test_str.chars().count();
         let (expr, parse_errs) = parser().parse_recovery(Stream::from_iter(
@@ -351,10 +350,32 @@ mod tests {
         let test_str = "let z = 10 in (x.x z)";
         match run_parser(test_str) {
             Ok(e) => {
-                println!("{}", e.0);
                 let env = Env::new();
                 match val(&env, e) {
-                    Ok(v) => println!("{:?}", v),
+                    Ok(v) => {
+                        if let Value::Int(v1) = v {
+                            assert!(v1 == 10)
+                        }
+                    }
+                    Err(_) => (),
+                }
+            }
+            Err(_) => (),
+        }
+    }
+
+    #[test]
+    fn val_1() {
+        let test_str = "let z = x.x in (z 10)";
+        match run_parser(test_str) {
+            Ok(e) => {
+                let env = Env::new();
+                match val(&env, e) {
+                    Ok(v) => {
+                        if let Value::Int(v1) = v {
+                            assert!(v1 == 10)
+                        }
+                    }
                     Err(_) => (),
                 }
             }
