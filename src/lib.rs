@@ -14,12 +14,12 @@ fn create_reports<T>(errs: &[Simple<T>]) -> Vec<Report>
 where
     T: PartialEq + Eq + std::hash::Hash + std::fmt::Display,
 {
-    errs.into_iter()
+    errs.iter()
         .map(|e| {
             let report = Report::build(ReportKind::Error, (), e.span().start);
 
             let report = match e.reason() {
-                chumsky::error::SimpleReason::Unclosed { span, delimiter } => {
+                chumsky::error::SimpleReason::Unclosed { span: _, delimiter } => {
                     report.with_message(format!(
                         "Unclosed delimiter {}",
                         delimiter.fg(Color::Yellow)
@@ -67,7 +67,7 @@ where
         .collect()
 }
 
-fn print_reports(src: &str, reports: Vec<Report>) -> () {
+fn print_reports(src: &str, reports: Vec<Report>) {
     reports
         .into_iter()
         .for_each(|r| r.print(Source::from(src)).unwrap());
@@ -119,12 +119,12 @@ enum Value {
 
 fn extend(mut rho: Env, x: Symbol, v: Value) -> Env {
     rho.insert(x, v);
-    return rho;
+    rho
 }
 
 fn unspan<T>(v: Spanned<T>) -> T {
-    let (actual, span) = v;
-    return actual;
+    let (actual, _span) = v;
+    actual
 }
 
 fn val(rho: &Env, e: Spanned<Expr>) -> Result<Spanned<Value>, Report> {
@@ -135,13 +135,13 @@ fn val(rho: &Env, e: Spanned<Expr>) -> Result<Spanned<Value>, Report> {
             Value::Clos(Clos {
                 env: rho.clone(),
                 var: Some(x),
-                body: *b.clone(),
+                body: *b,
             }),
             span,
         )),
         (LApp(e1, e2), span) => {
-            let v1 = val(&rho, *e1)?;
-            let v2 = val(&rho, *e2)?;
+            let v1 = val(rho, *e1)?;
+            let v2 = val(rho, *e2)?;
             let new = unspan(apply(v1, v2)?);
             Ok((new, span))
         }
@@ -165,7 +165,7 @@ fn apply(
                 var: v,
                 body: b,
             }),
-            span,
+            _span,
         ) => {
             let new_rho = extend(rho, v.unwrap(), arg.0);
             let new = val(&new_rho, b)?;
@@ -206,7 +206,7 @@ fn read_back(
             span,
         ) => {
             let name = x.unwrap();
-            let y = freshen(&used, &name);
+            let y = freshen(used, &name);
             let neutral = Value::NVar(y.clone());
             used.push(y.to_string());
             let new_rho = extend(rho, name, neutral);
@@ -295,15 +295,15 @@ fn lexer() -> impl Parser<char, Vec<(Token, Span)>, Error = Simple<char>> {
 fn parser(
 ) -> impl Parser<Token, Box<Spanned<Expr>>, Error = Simple<Token>> + Clone {
     recursive(|expr| {
-        let ident_ = select! { Token::Ident(ident) => ident.clone() }
+        let ident_ = select! { Token::Ident(ident) => ident }
             .labelled("Identifier");
 
         let lvar_ = select! {
-            Token::Ident(ident) => Expr::LVar(ident.clone()),
+            Token::Ident(ident) => Expr::LVar(ident),
         }
         .labelled("LVar");
 
-        let llit_ = select! { Token::Literal(v) => Expr::LInt(v.clone()) }
+        let llit_ = select! { Token::Literal(v) => Expr::LInt(v) }
             .labelled("Literal");
 
         let labs_ = ident_
@@ -336,9 +336,9 @@ fn parser(
 }
 
 fn run_parser(input: &str) -> Result<Spanned<Expr>, Vec<Report>> {
-    let (tokens, mut lexer_errs) = lexer().parse_recovery(input);
+    let (tokens, lexer_errs) = lexer().parse_recovery(input);
     let len = input.chars().count();
-    let (expr, parse_errs) = parser().parse_recovery(Stream::from_iter(
+    let (expr, _parse_errs) = parser().parse_recovery(Stream::from_iter(
         len..len + 1,
         tokens.unwrap().into_iter(),
     ));
@@ -379,14 +379,14 @@ mod tests {
     #[test]
     fn lexer_0() {
         let test_str = "(x.y)";
-        let (tokens, errs) = lexer().parse_recovery_verbose(test_str);
+        let (_tokens, errs) = lexer().parse_recovery_verbose(test_str);
         assert!(errs.is_empty());
     }
 
     #[test]
     fn lexer_1() {
         let test_str = "(x.y )";
-        let (tokens, errs) = lexer().parse_recovery(test_str);
+        let (_tokens, errs) = lexer().parse_recovery(test_str);
         assert!(errs.is_empty());
     }
 
@@ -396,7 +396,7 @@ mod tests {
         let (tokens, errs) = lexer().parse_recovery(test_str);
         assert!(errs.is_empty());
         let len = test_str.chars().count();
-        let (expr, parse_errs) = parser().parse_recovery(Stream::from_iter(
+        let (_expr, parse_errs) = parser().parse_recovery(Stream::from_iter(
             len..len + 1,
             tokens.unwrap().into_iter(),
         ));
@@ -411,7 +411,7 @@ mod tests {
         let (tokens, errs) = lexer().parse_recovery(test_str);
         assert!(errs.is_empty());
         let len = test_str.chars().count();
-        let (expr, parse_errs) = parser().parse_recovery(Stream::from_iter(
+        let (_expr, parse_errs) = parser().parse_recovery(Stream::from_iter(
             len..len + 1,
             tokens.unwrap().into_iter(),
         ));
@@ -426,7 +426,7 @@ mod tests {
         let (tokens, errs) = lexer().parse_recovery(test_str);
         assert!(errs.is_empty());
         let len = test_str.chars().count();
-        let (expr, parse_errs) = parser().parse_recovery(Stream::from_iter(
+        let (_expr, parse_errs) = parser().parse_recovery(Stream::from_iter(
             len..len + 1,
             tokens.unwrap().into_iter(),
         ));
