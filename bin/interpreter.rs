@@ -11,7 +11,10 @@ fn main() -> std::io::Result<()> {
             let mut contents = String::new();
             buf_reader.read_to_string(&mut contents)?;
             match libstachio::run_program(&contents) {
-                Ok(v) => println!("{}", libstachio::unspan(v)),
+                Ok((v, phase_statistics)) => {
+                    println!("{}", libstachio::unspan(v));
+                    //libstachio::print_phase_statistics(&phase_statistics);
+                }
                 Err(e) => libstachio::print_reports(&contents, e),
             }
         }

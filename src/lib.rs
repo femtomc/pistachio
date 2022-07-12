@@ -1,10 +1,78 @@
 use ariadne::{Color, Fmt, Label, Report, ReportKind, Source};
 use chumsky::{prelude::*, stream::Stream};
+use std::alloc::{GlobalAlloc, Layout, System};
 use std::collections::HashMap;
 use std::fmt;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::time::{Duration, Instant};
 
 // ------------------------------------------------
-//             For good error reporting
+//             Allocation diagnostics
+// ------------------------------------------------
+
+/// An allocator that counts amount of bytes allocated.
+pub struct AllocCounter;
+
+static ALLOCATED: AtomicUsize = AtomicUsize::new(0);
+
+unsafe impl GlobalAlloc for AllocCounter {
+    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+        ALLOCATED.fetch_add(layout.size(), Ordering::SeqCst);
+        System.alloc(layout)
+    }
+
+    unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
+        System.dealloc(ptr, layout);
+    }
+}
+
+pub fn reset_allocated() {
+    ALLOCATED.store(0, Ordering::SeqCst);
+}
+
+pub fn get_allocated() -> usize {
+    ALLOCATED.load(Ordering::SeqCst)
+}
+
+static A: AllocCounter = AllocCounter;
+
+#[derive(Debug)]
+pub struct PhaseStatistics {
+    name: &'static str,
+    time: Duration,
+    allocs: usize,
+}
+
+fn record_phase_statistics<R, F: FnOnce() -> R>(
+    stats: &mut Vec<PhaseStatistics>,
+    phase_name: &'static str,
+    phase: F,
+) -> R {
+    let allocs_before = get_allocated();
+    let start_time = Instant::now();
+    let ret = phase();
+    let elapsed = start_time.elapsed();
+    let allocs_after = get_allocated();
+    stats.push(PhaseStatistics {
+        name: phase_name,
+        time: elapsed,
+        allocs: allocs_after - allocs_before,
+    });
+    ret
+}
+
+pub fn print_phase_statistics(phase_statistics: &[PhaseStatistics]) {
+    let mut total_elapsed: Duration = Duration::from_micros(0);
+    let mut total_allocated: usize = 0;
+    for PhaseStatistics { name, time, allocs } in phase_statistics {
+        println!("| {}: {} µs, {} bytes", name, time.as_micros(), allocs);
+        total_elapsed += *time;
+        total_allocated += allocs;
+    }
+}
+
+// ------------------------------------------------
+//                Error reporting
 // ------------------------------------------------
 
 type Span = std::ops::Range<usize>;
@@ -244,6 +312,10 @@ fn norm(rho: &Env, e: Spanned<Expr>) -> Result<Spanned<Expr>, Report> {
 }
 
 // ------------------------------------------------
+//           Bidirectional type system
+// ------------------------------------------------
+
+// ------------------------------------------------
 //              Lexing and parsing
 // ------------------------------------------------
 
@@ -368,17 +440,45 @@ fn run_parser(input: &str) -> Result<Spanned<Expr>, Vec<Report>> {
 //                    Toplevel
 // ------------------------------------------------
 
-pub fn run_program(prog: &str) -> Result<Spanned<Expr>, Vec<Report>> {
-    match run_parser(prog) {
-        Ok(expr) => {
-            let env = Env::new();
-            match norm(&env, expr) {
-                Ok(e) => Ok(e),
-                Err(e) => Err(vec![e]),
-            }
-        }
-        Err(e) => Err(e),
+pub fn run_program(
+    prog: &str,
+) -> Result<(Spanned<Expr>, Vec<PhaseStatistics>), Vec<Report>> {
+    let len = prog.chars().count();
+    let mut phase_statistics: Vec<PhaseStatistics> = Vec::with_capacity(10);
+
+    // Lexing.
+    let (tokens, lexer_errs) =
+        record_phase_statistics(&mut phase_statistics, "lexing", || {
+            lexer().parse_recovery(prog)
+        });
+
+    // Parsing.
+    let (expr, parse_errs) =
+        record_phase_statistics(&mut phase_statistics, "parsing", || {
+            parser().parse_recovery(Stream::from_iter(
+                len..len + 1,
+                tokens.unwrap().into_iter(),
+            ))
+        });
+    let mut lexer_reports = create_reports(&lexer_errs);
+    let mut parser_reports = create_reports(&parse_errs);
+    lexer_reports.append(&mut parser_reports);
+    if !lexer_reports.is_empty() {
+        return Err(lexer_reports);
     }
+
+    // Evaluation.
+    let env = Env::new();
+    let v = match record_phase_statistics(
+        &mut phase_statistics,
+        "evaluation",
+        || norm(&env, *expr.unwrap()),
+    ) {
+        Ok(v) => Ok(v),
+        Err(e) => Err(vec![e]),
+    }?;
+
+    Ok((v, phase_statistics))
 }
 
 // ------------------------------------------------

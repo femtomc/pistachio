@@ -9,7 +9,9 @@ fn main() -> io::Result<()> {
         let sig = line_editor.read_line(&prompt)?;
         match sig {
             Signal::Success(buffer) => match libstachio::run_program(&buffer) {
-                Ok(v) => println!("{}", libstachio::unspan(v)),
+                Ok((v, phase_statistics)) => {
+                    println!("{}", libstachio::unspan(v))
+                }
                 Err(e) => libstachio::print_reports(&buffer, e),
             },
             Signal::CtrlD | Signal::CtrlC => {
