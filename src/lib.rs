@@ -547,22 +547,4 @@ mod tests {
         print_reports(test_str, reports);
         assert!(parse_errs.is_empty());
     }
-
-    #[test]
-    fn val_0() {
-        let test_str = "let z = 10 in (x.x z)";
-        match run_program(test_str) {
-            Ok(e) => println!("{}", unspan(e)),
-            Err(reports) => print_reports(test_str, reports),
-        }
-    }
-
-    #[test]
-    fn val_1() {
-        let test_str = "let z = x.x in (z 10)";
-        match run_program(test_str) {
-            Ok(e) => println!("{}", unspan(e)),
-            Err(reports) => print_reports(test_str, reports),
-        }
-    }
 }
