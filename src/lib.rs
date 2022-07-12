@@ -10,7 +10,7 @@ use std::fmt;
 type Span = std::ops::Range<usize>;
 type Spanned<T> = (T, Span);
 
-fn create_reports<T>(src: &str, errs: &[Simple<T>]) -> Vec<Report>
+fn create_reports<T>(errs: &[Simple<T>]) -> Vec<Report>
 where
     T: PartialEq + Eq + std::hash::Hash + std::fmt::Display,
 {
@@ -67,6 +67,12 @@ where
         .collect()
 }
 
+fn print_reports(src: &str, reports: Vec<Report>) -> () {
+    reports
+        .into_iter()
+        .for_each(|r| r.print(Source::from(src)).unwrap());
+}
+
 // ------------------------------------------------
 //          Core language and evaluation
 // ------------------------------------------------
@@ -97,7 +103,7 @@ type Symbol = String;
 type Env = HashMap<String, Value>;
 
 #[derive(Debug, Clone)]
-struct Closure {
+struct Clos {
     env: Env,
     var: Option<Symbol>,
     body: Spanned<Expr>,
@@ -106,7 +112,9 @@ struct Closure {
 #[derive(Debug, Clone)]
 enum Value {
     Int(i64),
-    Closure(Closure),
+    NVar(String),
+    NApp(Box<Spanned<Value>>, Box<Spanned<Value>>),
+    Clos(Clos),
 }
 
 fn extend(mut rho: Env, x: Symbol, v: Value) -> Env {
@@ -114,41 +122,112 @@ fn extend(mut rho: Env, x: Symbol, v: Value) -> Env {
     return rho;
 }
 
-fn val(rho: &Env, e: Spanned<Expr>) -> Result<Value, Report> {
+fn unspan<T>(v: Spanned<T>) -> T {
+    let (actual, span) = v;
+    return actual;
+}
+
+fn val(rho: &Env, e: Spanned<Expr>) -> Result<Spanned<Value>, Report> {
     match e {
-        (LInt(v), _) => Ok(Value::Int(v)),
-        (LVar(x), _) => Ok(rho.get(&x).unwrap().clone()),
-        (LAbs(x, b), _) => Ok(Value::Closure(Closure {
-            env: rho.clone(),
-            var: Some(x),
-            body: *b.clone(),
-        })),
-        (LApp(e1, e2), _) => {
+        (LInt(v), span) => Ok((Value::Int(v), span)),
+        (LVar(x), span) => Ok((rho.get(&x).unwrap().clone(), span)),
+        (LAbs(x, b), span) => Ok((
+            Value::Clos(Clos {
+                env: rho.clone(),
+                var: Some(x),
+                body: *b.clone(),
+            }),
+            span,
+        )),
+        (LApp(e1, e2), span) => {
             let v1 = val(&rho, *e1)?;
             let v2 = val(&rho, *e2)?;
-            apply(v1, v2)
+            let new = unspan(apply(v1, v2)?);
+            Ok((new, span))
         }
-        (LLet(v, e, b), _) => {
-            let evaluated = val(rho, *e)?;
+        (LLet(v, e, b), span) => {
+            let evaluated = unspan(val(rho, *e)?);
             let rho_new = extend(rho.clone(), v, evaluated);
-            val(&rho_new, *b)
+            let new = unspan(val(&rho_new, *b)?);
+            Ok((new, span))
         }
     }
 }
 
-fn apply(clos: Value, arg: Value) -> Result<Value, Report> {
-    match clos {
-        Value::Closure(Closure {
-            env: rho,
-            var: v,
-            body: b,
-        }) => Ok(val(&extend(rho, v.unwrap(), arg), b)?),
-        _ => Err({
-            Report::build(ReportKind::Error, (), 0)
-                .with_message("Attempted to apply non-closure value.")
-                .finish()
-        }),
+fn apply(
+    fun: Spanned<Value>,
+    arg: Spanned<Value>,
+) -> Result<Spanned<Value>, Report> {
+    match fun {
+        (
+            Value::Clos(Clos {
+                env: rho,
+                var: v,
+                body: b,
+            }),
+            span,
+        ) => {
+            let new_rho = extend(rho, v.unwrap(), arg.0);
+            let new = val(&new_rho, b)?;
+            Ok(new)
+        }
+        (_, _) => {
+            let new_span = std::ops::Range {
+                start: fun.1.start,
+                end: arg.1.end,
+            };
+            Ok((Value::NApp(Box::new(fun), Box::new(arg)), new_span))
+        }
     }
+}
+
+fn gensym(x: &str) -> String {
+    format!("{}*", x)
+}
+
+fn freshen(used: &[String], x: &str) -> String {
+    match used.contains(&x.to_string()) {
+        true => freshen(used, &gensym(x)),
+        false => x.to_string(),
+    }
+}
+
+fn read_back(
+    used: &mut Vec<String>,
+    v: Spanned<Value>,
+) -> Result<Spanned<Expr>, Report> {
+    match v {
+        (
+            Value::Clos(Clos {
+                env: rho,
+                var: x,
+                body: b,
+            }),
+            span,
+        ) => {
+            let name = x.unwrap();
+            let y = freshen(&used, &name);
+            let neutral = Value::NVar(y.clone());
+            used.push(y.to_string());
+            let new_rho = extend(rho, name, neutral);
+            let v = val(&new_rho, b)?;
+            let quoted = read_back(used, v)?;
+            Ok((LAbs(y, Box::new(quoted)), span))
+        }
+        (Value::NVar(x), span) => Ok((LVar(x), span)),
+        (Value::NApp(n1, n2), span) => {
+            let e1 = read_back(used, *n1)?;
+            let e2 = read_back(used, *n2)?;
+            Ok((LApp(Box::new(e1), Box::new(e2)), span))
+        }
+        (Value::Int(v), span) => Ok((LInt(v), span)),
+    }
+}
+
+fn norm(rho: &Env, e: Spanned<Expr>) -> Result<Spanned<Expr>, Report> {
+    let mut v = Vec::new();
+    let e = val(rho, e)?;
+    read_back(&mut v, e)
 }
 
 // ------------------------------------------------
@@ -263,12 +342,29 @@ fn run_parser(input: &str) -> Result<Spanned<Expr>, Vec<Report>> {
         len..len + 1,
         tokens.unwrap().into_iter(),
     ));
-    let mut lexer_reports = create_reports(input, &lexer_errs);
-    let mut parser_reports = create_reports(input, &lexer_errs);
+    let mut lexer_reports = create_reports(&lexer_errs);
+    let mut parser_reports = create_reports(&lexer_errs);
     lexer_reports.append(&mut parser_reports);
     match lexer_reports.is_empty() {
         true => Ok(*expr.unwrap()),
         false => Err(lexer_reports),
+    }
+}
+
+// ------------------------------------------------
+//                    Toplevel
+// ------------------------------------------------
+
+fn run_program(prog: &str) -> Result<Spanned<Expr>, Vec<Report>> {
+    match run_parser(prog) {
+        Ok(expr) => {
+            let env = Env::new();
+            match norm(&env, expr) {
+                Ok(e) => Ok(e),
+                Err(e) => Err(vec![e]),
+            }
+        }
+        Err(e) => Err(e),
     }
 }
 
@@ -304,10 +400,8 @@ mod tests {
             len..len + 1,
             tokens.unwrap().into_iter(),
         ));
-        let reports = create_reports(test_str, &parse_errs);
-        reports
-            .into_iter()
-            .for_each(|r| r.print(Source::from(test_str)).unwrap());
+        let reports = create_reports(&parse_errs);
+        print_reports(test_str, reports);
         assert!(parse_errs.is_empty());
     }
 
@@ -321,10 +415,8 @@ mod tests {
             len..len + 1,
             tokens.unwrap().into_iter(),
         ));
-        let reports = create_reports(test_str, &parse_errs);
-        reports
-            .into_iter()
-            .for_each(|r| r.print(Source::from(test_str)).unwrap());
+        let reports = create_reports(&parse_errs);
+        print_reports(test_str, reports);
         assert!(parse_errs.is_empty());
     }
 
@@ -338,48 +430,26 @@ mod tests {
             len..len + 1,
             tokens.unwrap().into_iter(),
         ));
-        let reports = create_reports(test_str, &parse_errs);
-        reports
-            .into_iter()
-            .for_each(|r| r.print(Source::from(test_str)).unwrap());
+        let reports = create_reports(&parse_errs);
+        print_reports(test_str, reports);
         assert!(parse_errs.is_empty());
     }
 
     #[test]
     fn val_0() {
         let test_str = "let z = 10 in (x.x z)";
-        match run_parser(test_str) {
-            Ok(e) => {
-                let env = Env::new();
-                match val(&env, e) {
-                    Ok(v) => {
-                        if let Value::Int(v1) = v {
-                            assert!(v1 == 10)
-                        }
-                    }
-                    Err(_) => (),
-                }
-            }
-            Err(_) => (),
+        match run_program(test_str) {
+            Ok(e) => println!("{}", unspan(e)),
+            Err(reports) => print_reports(test_str, reports),
         }
     }
 
     #[test]
     fn val_1() {
         let test_str = "let z = x.x in (z 10)";
-        match run_parser(test_str) {
-            Ok(e) => {
-                let env = Env::new();
-                match val(&env, e) {
-                    Ok(v) => {
-                        if let Value::Int(v1) = v {
-                            assert!(v1 == 10)
-                        }
-                    }
-                    Err(_) => (),
-                }
-            }
-            Err(_) => (),
+        match run_program(test_str) {
+            Ok(e) => println!("{}", unspan(e)),
+            Err(reports) => print_reports(test_str, reports),
         }
     }
 }
