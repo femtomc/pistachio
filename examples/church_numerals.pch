@@ -1,0 +1,3 @@
+let church_zero = f.x.x in
+  let church_add1 = n.f.x.(f ((n f) x)) in
+    (church_add1 church_zero)

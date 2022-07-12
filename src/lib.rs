@@ -68,7 +68,7 @@ where
         .collect()
 }
 
-fn print_reports(src: &str, reports: Vec<Report>) {
+pub fn print_reports(src: &str, reports: Vec<Report>) {
     reports
         .into_iter()
         .for_each(|r| r.print(Source::from(src)).unwrap());
@@ -79,7 +79,7 @@ fn print_reports(src: &str, reports: Vec<Report>) {
 // ------------------------------------------------
 
 #[derive(Debug, Clone)]
-enum Expr {
+pub enum Expr {
     LInt(i64),
     LVar(String),
     LAbs(String, Box<Spanned<Self>>),
@@ -123,7 +123,7 @@ fn extend(mut rho: Env, x: Symbol, v: Value) -> Env {
     rho
 }
 
-fn unspan<T>(v: Spanned<T>) -> T {
+pub fn unspan<T>(v: Spanned<T>) -> T {
     let (actual, _span) = v;
     actual
 }
@@ -131,7 +131,19 @@ fn unspan<T>(v: Spanned<T>) -> T {
 fn val(rho: &Env, e: Spanned<Expr>) -> Result<Spanned<Value>, Report> {
     match e {
         (LInt(v), span) => Ok((Value::Int(v), span)),
-        (LVar(x), span) => Ok((rho.get(&x).unwrap().clone(), span)),
+        (LVar(x), span) => match rho.get(&x) {
+            Some(v) => Ok((v.clone(), span)),
+            None => {
+                let report = Report::build(ReportKind::Error, (), span.start)
+                    .with_message(format!("Binding not found: {}", x))
+                    .with_label(
+                        Label::new(span.start..span.end)
+                            .with_message("Used here."),
+                    )
+                    .finish();
+                Err(report)
+            }
+        },
         (LAbs(x, b), span) => Ok((
             Value::Clos(Clos {
                 env: rho.clone(),
@@ -339,12 +351,12 @@ fn parser(
 fn run_parser(input: &str) -> Result<Spanned<Expr>, Vec<Report>> {
     let (tokens, lexer_errs) = lexer().parse_recovery(input);
     let len = input.chars().count();
-    let (expr, _parse_errs) = parser().parse_recovery(Stream::from_iter(
+    let (expr, parse_errs) = parser().parse_recovery(Stream::from_iter(
         len..len + 1,
         tokens.unwrap().into_iter(),
     ));
     let mut lexer_reports = create_reports(&lexer_errs);
-    let mut parser_reports = create_reports(&lexer_errs);
+    let mut parser_reports = create_reports(&parse_errs);
     lexer_reports.append(&mut parser_reports);
     match lexer_reports.is_empty() {
         true => Ok(*expr.unwrap()),
@@ -356,7 +368,7 @@ fn run_parser(input: &str) -> Result<Spanned<Expr>, Vec<Report>> {
 //                    Toplevel
 // ------------------------------------------------
 
-fn run_program(prog: &str) -> Result<Spanned<Expr>, Vec<Report>> {
+pub fn run_program(prog: &str) -> Result<Spanned<Expr>, Vec<Report>> {
     match run_parser(prog) {
         Ok(expr) => {
             let env = Env::new();

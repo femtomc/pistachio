@@ -3,8 +3,22 @@ name = "pistachio"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+name = "libstachio"
+path = "src/lib.rs"
+
+[[bin]]
+name = "repl"
+path = "bin/repl.rs"
+
+[[bin]]
+name = "interpreter"
+path = "bin/interpreter.rs"
 
 [dependencies]
 ariadne = "0.1.5"
 chumsky = "0.8.0"
+reedline = "0.8.0"
+
+[profile.release]
+lto = true
