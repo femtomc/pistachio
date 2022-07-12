@@ -15,6 +15,9 @@ I want to learn about how theorem provers and dependently typed languages are im
 **Exploration List**:
 
 - [ ] Likely, I'll start with `tartlet` in Rust, and then attempt to explore beyond.
+  - [x] Untyped lambda calculus evaluator.
+  - [x] Normalization.
+  - [ ] Types.
 
 **Things I want to learn about**:
 
