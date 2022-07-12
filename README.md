@@ -12,14 +12,14 @@ I want to learn about how theorem provers and dependently typed languages are im
 - [tartlet](https://davidchristiansen.dk/tutorials/nbe/)
 - [Victor Maia's post on a small theorem prover](https://medium.com/@maiavictor/towards-a-simple-theorem-prover-5005a1e66a6f)
 
-**Exploration List**:
+**Exploration List**
 
 - [ ] Likely, I'll start with `tartlet` in Rust, and then attempt to explore beyond.
   - [x] Untyped lambda calculus evaluator.
   - [x] Normalization.
   - [ ] Types.
 
-**Things I want to learn about**:
+**Things I want to learn about**
 
 - [ ] Why [normalization by evaluation](https://en.wikipedia.org/wiki/Normalisation_by_evaluation)?
 - [ ] [Does exposing interfaces to the elaborator enable typed metaprogramming?](https://docs.idris-lang.org/en/latest/elaboratorReflection/elabReflection.html)
