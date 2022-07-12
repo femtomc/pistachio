@@ -20,11 +20,11 @@ I want to learn about how theorem provers and dependently typed languages are im
 
 When it comes to dependent types, my main question is about runtime performance. Do dependent types provide a substrate for communicating with the compiler in a direct way? More generally, is it possible to construct a language system where metaprograms (optimizers, program transformers, etc) are also specified and checked?
 
-If yes, it's possible that a language system like this could provide a useful basis for modern techniques in numerical methods (like machine learning). There are plenty of new language papers on automatic differentation, including implementation via delimited continuations, source-to-source program transformations, etc. Instead of building a transformation like this into the compiler, what's the right language platform to allow a library of metaprograms to implement fully specified AD.
+If yes, it's possible that a language system like this could provide a useful basis for modern techniques in numerical methods (like machine learning). There are plenty of new language papers on automatic differentation, including implementations via delimited continuations, and source-to-source program transformations, etc. Instead of building a transformation like this into the compiler, what's the right language platform to allow a library of metaprograms to implement fully specified AD.
 
 Probabilistic programming is another area which motivates me. Large scale (repeated) inference often requires re-evaluating functions with small modifications to inputs. Static techniques have been developed for this use case -- and expressed by program transformers. What sort of language allows me to write these transformers in user-space?
 
-The main downside of dependent types seems to be ergonomics: this stuff is complicated. Proving things is complicated. Exposing metaprogramming to programmers is frightening!
+The main downside of dependent types seems to be ergonomics: the implementation is complicated. Proving things is complicated. Exposing metaprogramming to programmers via elaboration extension also appears to be a complicated thing.
 
 ## Prior art?
 
