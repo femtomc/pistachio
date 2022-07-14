@@ -7,6 +7,21 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{Duration, Instant};
 
 // ------------------------------------------------
+//         (Global mutable integer) gensym
+// ------------------------------------------------
+
+// In general, code should not rely on equality checks for
+// the value of this global.
+
+static INT: u64 = 0;
+
+fn gensym() -> String {
+    let s = format!("x{}", INT);
+    INT += 1;
+    s
+}
+
+// ------------------------------------------------
 //             Allocation diagnostics
 // ------------------------------------------------
 
@@ -78,6 +93,11 @@ pub fn print_phase_statistics(phase_statistics: &[PhaseStatistics]) {
 type Span = std::ops::Range<usize>;
 type Spanned<T> = (T, Span);
 
+pub fn unspan<T>(v: Spanned<T>) -> T {
+    let (actual, _span) = v;
+    actual
+}
+
 fn create_reports<T>(errs: &[Simple<T>]) -> Vec<Report>
 where
     T: PartialEq + Eq + std::hash::Hash + std::fmt::Display,
@@ -146,13 +166,40 @@ pub fn print_reports(src: &str, reports: Vec<Report>) {
 //          Core language and evaluation
 // ------------------------------------------------
 
-#[derive(Debug, Clone)]
+type Identifier = String;
+
+type SBox<T> = Box<Spanned<T>>;
+
+#[derive(PartialEq, Eq, Debug, Clone)]
 pub enum Expr {
-    LInt(i64),
-    LVar(String),
-    LAbs(String, Box<Spanned<Self>>),
-    LApp(Box<Spanned<Self>>, Box<Spanned<Self>>),
-    LLet(String, Box<Spanned<Self>>, Box<Spanned<Self>>),
+    // Core calculus.
+    Var(Identifier),
+    Pi(Identifier, SBox<Self>, SBox<Self>),
+    Lam(Identifier, SBox<Self>),
+    App(SBox<Self>, SBox<Self>),
+    Sigma(Identifier, SBox<Self>, SBox<Self>),
+
+    // Pair constructors and eliminators.
+    Cons(SBox<Self>, SBox<Self>),
+    Car(SBox<Self>),
+    Cdr(SBox<Self>),
+
+    // Natural number constructors and induction principle.
+    Nat,
+    Zero,
+    Add1(SBox<Self>),
+    IndNat(SBox<Self>, SBox<Self>, SBox<Self>, SBox<Self>),
+
+    Same,
+    Replace(SBox<Self>, SBox<Self>, SBox<Self>),
+    Trivial,
+    Sole,
+    Absurd,
+    IndAbsurd(SBox<Self>, SBox<Self>),
+    Atom,
+    Quote(Identifier),
+    U,
+    The(SBox<Self>, SBox<Self>),
 }
 use Expr::*;
 
@@ -168,147 +215,177 @@ impl fmt::Display for Expr {
     }
 }
 
-type Symbol = String;
-type Env = HashMap<String, Value>;
+type Env = HashMap<Identifier, Value>;
+type BindingEnv = HashMap<Identifier, Identifier>;
+
+fn extend<T>(
+    mut rho: HashMap<Identifier, T>,
+    x: Identifier,
+    v: T,
+) -> HashMap<Identifier, T> {
+    rho.insert(x, v);
+    rho
+}
+
+fn unspan_map<R, T, F: FnOnce(T, T) -> R>(
+    e1: Spanned<T>,
+    e2: Spanned<T>,
+    f: F,
+) -> R {
+    let e1_ = unspan(e1);
+    let e2_ = unspan(e2);
+    f(e1_, e2_)
+}
+
+fn alpha_equivalence_check_(
+    e1: Expr,
+    e2: Expr,
+    xs1: BindingEnv,
+    xs2: BindingEnv,
+) -> bool {
+    match (e1, e2) {
+        (Var(id1), Var(id2)) => id1 == id2,
+        (Lam(x1, b1), Lam(x2, b2)) => {
+            let fresh = gensym();
+            let bigger1 = extend(xs1, x1.to_string(), fresh);
+            let bigger2 = extend(xs2, x1.to_string(), fresh);
+            unspan_map(*b1, *b2, |b1, b2| {
+                alpha_equivalence_check_(b1, b2, bigger1, bigger2)
+            })
+        }
+        (Pi(x, A1, B1), Pi(y, A2, B2)) => {
+            let check1 = unspan_map(*A1, *A2, |A1, A2| {
+                alpha_equivalence_check_(A1, A2, xs1, xs2)
+            });
+            let fresh = gensym();
+            let bigger1 = extend(xs1, x.to_string(), fresh);
+            let bigger2 = extend(xs2, y.to_string(), fresh);
+            let check2 = unspan_map(*B1, *B2, |B1, B2| {
+                alpha_equivalence_check_(B1, B2, bigger1, bigger2)
+            });
+            check1 && check2
+        }
+        (Sigma(x, A1, B1), Sigma(y, A2, B2)) => {
+            let check1 = unspan_map(*A1, *A2, |A1, A2| {
+                alpha_equivalence_check_(A1, A2, xs1, xs2)
+            });
+            let fresh = gensym();
+            let bigger1 = extend(xs1, x.to_string(), fresh);
+            let bigger2 = extend(xs2, y.to_string(), fresh);
+            let check2 = unspan_map(*B1, *B2, |B1, B2| {
+                alpha_equivalence_check_(B1, B2, bigger1, bigger2)
+            });
+            check1 && check2
+        }
+        (Quote(x), Quote(y)) => x == y,
+        (The(e1, e1_), The(e2, e2_)) => {
+            unspan_map(*e1, *e2, |e1, e2| match (e1, e2) {
+                (Absurd, Absurd) => true,
+                _ => false,
+            })
+        }
+        (Cons(op1, e1), Cons(op2, e2)) => {}
+        (_, _) => false,
+    }
+}
+
+fn alpha_equivalence_check(e1: Expr, e2: Expr) -> bool {
+    let xs1 = BindingEnv::new();
+    let xs2 = BindingEnv::new();
+    alpha_equivalence_check_(e1, e2, xs1, xs2)
+}
 
 #[derive(Debug, Clone)]
 struct Clos {
     env: Env,
-    var: Option<Symbol>,
+    var: Option<Identifier>,
     body: Spanned<Expr>,
 }
 
 #[derive(Debug, Clone)]
 enum Value {
-    Int(i64),
-    NVar(String),
-    NApp(Box<Spanned<Value>>, Box<Spanned<Value>>),
-    Clos(Clos),
+    Pi(Box<Self>, Clos),
+    Lam(Clos),
+    Sigma(Box<Self>, Clos),
+    Pair(Box<Self>, Box<Self>),
+    Nat,
+    Zero,
+    Add1(Box<Self>),
+    Eq(Box<Self>, Box<Self>, Box<Self>),
+    Same,
+    Trivial,
+    Sole,
+    Absurd,
+    Quote,
+    Uni,
+    Neutral(Box<Self>, Neutral),
+    HOClos(Identifier, fn(Value) -> Value),
 }
 
-fn extend(mut rho: Env, x: Symbol, v: Value) -> Env {
-    rho.insert(x, v);
-    rho
+#[derive(Debug, Clone)]
+enum Neutral {
+    Var(Identifier),
+    App(Box<Self>, Normal),
+    Car(Box<Self>),
+    Cdr(Box<Self>),
+    IndNat(Box<Self>, Normal, Normal, Normal),
+    Replace(Box<Self>, Normal, Normal),
+    IndAbsurd(Box<Self>, Normal),
 }
 
-pub fn unspan<T>(v: Spanned<T>) -> T {
-    let (actual, _span) = v;
-    actual
+#[derive(Debug, Clone)]
+enum Normal {
+    The(Box<Value>, Box<Value>),
 }
 
-fn val(rho: &Env, e: Spanned<Expr>) -> Result<Spanned<Value>, Report> {
-    match e {
-        (LInt(v), span) => Ok((Value::Int(v), span)),
-        (LVar(x), span) => match rho.get(&x) {
-            Some(v) => Ok((v.clone(), span)),
-            None => {
-                let report = Report::build(ReportKind::Error, (), span.start)
-                    .with_message(format!("Binding not found: {}", x))
-                    .with_label(
-                        Label::new(span.start..span.end)
-                            .with_message("Used here."),
-                    )
-                    .finish();
-                Err(report)
+enum Definition {
+    Def(Value, Value),
+    Bind(Value),
+}
+
+type Context = HashMap<Identifier, Definition>;
+
+fn lookup_type(x: Identifier, gamma: Context) -> Result<Value, Report> {
+    let d = gamma.get(&x).unwrap();
+    match d {
+        Definition::Def(v1, v2) => Ok(*v1),
+        Definition::Bind(v1) => Ok(*v1),
+        _ => Err(Report::build(ReportKind::Error, (), 0)
+            .with_message("Unknown variable.")
+            .finish()),
+    }
+}
+
+fn convert_to_env(gamma: Context) -> Env {
+    let m: Env = gamma
+        .into_iter()
+        .map(|(k, v)| match v {
+            Definition::Bind(t) => {
+                (k, Value::Neutral(Box::new(t), Neutral::Var(k)))
             }
-        },
-        (LAbs(x, b), span) => Ok((
-            Value::Clos(Clos {
-                env: rho.clone(),
-                var: Some(x),
-                body: *b,
-            }),
-            span,
-        )),
-        (LApp(e1, e2), span) => {
-            let v1 = val(rho, *e1)?;
-            let v2 = val(rho, *e2)?;
-            let new = unspan(apply(v1, v2)?);
-            Ok((new, span))
+            Definition::Def(_, value) => (k, value),
+        })
+        .collect();
+    m
+}
+
+fn extend_ctx(gamma: Context, x: Identifier, t: Value) -> Context {
+    gamma.insert(x, Definition::Bind(t));
+    gamma
+}
+
+fn val_of_closure(c: Value, v: Value) -> Result<Value, Report> {
+    match c {
+        Value::Lam(Clos {
+            env: rho,
+            var: x,
+            body: b,
+        }) => {
+            let new = extend(rho, x.unwrap(), v);
+            val(&rho, b)
         }
-        (LLet(v, e, b), span) => {
-            let evaluated = unspan(val(rho, *e)?);
-            let rho_new = extend(rho.clone(), v, evaluated);
-            let new = unspan(val(&rho_new, *b)?);
-            Ok((new, span))
-        }
+        Value::HOClos(x, f) => Ok(f(v)),
     }
-}
-
-fn apply(
-    fun: Spanned<Value>,
-    arg: Spanned<Value>,
-) -> Result<Spanned<Value>, Report> {
-    match fun {
-        (
-            Value::Clos(Clos {
-                env: rho,
-                var: v,
-                body: b,
-            }),
-            _span,
-        ) => {
-            let new_rho = extend(rho, v.unwrap(), arg.0);
-            let new = val(&new_rho, b)?;
-            Ok(new)
-        }
-        (_, _) => {
-            let new_span = std::ops::Range {
-                start: fun.1.start,
-                end: arg.1.end,
-            };
-            Ok((Value::NApp(Box::new(fun), Box::new(arg)), new_span))
-        }
-    }
-}
-
-fn gensym(x: &str) -> String {
-    format!("{}*", x)
-}
-
-fn freshen(used: &[String], x: &str) -> String {
-    match used.contains(&x.to_string()) {
-        true => freshen(used, &gensym(x)),
-        false => x.to_string(),
-    }
-}
-
-fn read_back(
-    used: &mut Vec<String>,
-    v: Spanned<Value>,
-) -> Result<Spanned<Expr>, Report> {
-    match v {
-        (
-            Value::Clos(Clos {
-                env: rho,
-                var: x,
-                body: b,
-            }),
-            span,
-        ) => {
-            let name = x.unwrap();
-            let y = freshen(used, &name);
-            let neutral = Value::NVar(y.clone());
-            used.push(y.to_string());
-            let new_rho = extend(rho, name, neutral);
-            let v = val(&new_rho, b)?;
-            let quoted = read_back(used, v)?;
-            Ok((LAbs(y, Box::new(quoted)), span))
-        }
-        (Value::NVar(x), span) => Ok((LVar(x), span)),
-        (Value::NApp(n1, n2), span) => {
-            let e1 = read_back(used, *n1)?;
-            let e2 = read_back(used, *n2)?;
-            Ok((LApp(Box::new(e1), Box::new(e2)), span))
-        }
-        (Value::Int(v), span) => Ok((LInt(v), span)),
-    }
-}
-
-fn norm(rho: &Env, e: Spanned<Expr>) -> Result<Spanned<Expr>, Report> {
-    let mut v = Vec::new();
-    let e = val(rho, e)?;
-    read_back(&mut v, e)
 }
 
 // ------------------------------------------------
@@ -349,8 +426,28 @@ fn lexer() -> impl Parser<char, Vec<(Token, Span)>, Error = Simple<char>> {
     let lparen_ = just('(').map(|_| Token::LParen);
     let rparen_ = just(')').map(|_| Token::RParen);
     let ident_ = text::ident().map(|ident: String| match ident.as_str() {
-        "let" => Token::Keyword("let".to_string()),
-        "in" => Token::Keyword("in".to_string()),
+        "define" => Token::Keyword("define".to_string()),
+        "U" => Token::Keyword("U".to_string()),
+        "Nat" => Token::Keyword("Nat".to_string()),
+        "zero" => Token::Keyword("zero".to_string()),
+        "add1" => Token::Keyword("add1".to_string()),
+        "ind_Nat" => Token::Keyword("ind_Nat".to_string()),
+        "Sigma" => Token::Keyword("Sigma".to_string()),
+        "cons" => Token::Keyword("cons".to_string()),
+        "car" => Token::Keyword("car".to_string()),
+        "cdr" => Token::Keyword("cdr".to_string()),
+        "Pi" => Token::Keyword("Pi".to_string()),
+        "lambda" => Token::Keyword("lambda".to_string()),
+        "=" => Token::Keyword("=".to_string()),
+        "same" => Token::Keyword("same".to_string()),
+        "replace" => Token::Keyword("replace".to_string()),
+        "Trivial" => Token::Keyword("Trivial".to_string()),
+        "sole" => Token::Keyword("sole".to_string()),
+        "Absurd" => Token::Keyword("Absurd".to_string()),
+        "ind_Absurd" => Token::Keyword("ind_Absurd".to_string()),
+        "Atom" => Token::Keyword("Atom".to_string()),
+        "quote" => Token::Keyword("quote".to_string()),
+        "the" => Token::Keyword("the".to_string()),
         _ => Token::Ident(ident),
     });
     let operator_ = one_of("+-*/!=")
