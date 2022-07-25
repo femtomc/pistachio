@@ -1,7 +1,7 @@
-use crate::frontend::cfg::{self, RepType};
+use crate::between::cfg::{self, RepType};
+use crate::between::lowering;
 use crate::frontend::common::{BinOp, Cmp, FloatBinOp, IntBinOp};
 use crate::frontend::ctx::{Ctx, VarId};
-use crate::frontend::lowering;
 use crate::frontend::typecheck;
 use cranelift_codegen::entity::EntityRef;
 use cranelift_codegen::ir::condcodes::{FloatCC, IntCC};

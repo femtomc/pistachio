@@ -2,7 +2,7 @@ use crate::frontend::ast::Expr;
 use crate::frontend::ctx::{Ctx, VarId};
 use crate::frontend::locals::Locals;
 use crate::frontend::utils::take;
-use crate::frontend::var::Uniq;
+use crate::var::Uniq;
 use fxhash::FxHashMap;
 use std::fmt;
 use std::rc::Rc;

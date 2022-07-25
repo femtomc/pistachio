@@ -3,11 +3,14 @@
 #![feature(box_patterns)]
 
 mod backend;
+mod between;
+mod diagnostics;
 mod frontend;
+mod var;
 
-use frontend::anormal::anormal;
+use between::anormal::anormal;
+use between::lowering::lower_pgm;
 use frontend::lexer::{tokenize, Token};
-use frontend::lowering::lower_pgm;
 use frontend::typecheck::typecheck_pgm;
 use std::fs::File;
 use std::io::Write;
@@ -21,8 +24,7 @@ use backend::cranelift::codegen;
 
 #[cfg(debug_assertions)]
 #[global_allocator]
-static A: frontend::diagnostics::AllocCounter =
-    frontend::diagnostics::AllocCounter;
+static A: diagnostics::AllocCounter = diagnostics::AllocCounter;
 
 #[derive(Debug)]
 struct PassStats {
@@ -36,11 +38,11 @@ fn record_pass_stats<A, F: FnOnce() -> A>(
     pass_name: &'static str,
     pass: F,
 ) -> A {
-    let allocs_before = frontend::diagnostics::get_allocated();
+    let allocs_before = diagnostics::get_allocated();
     let start_time = Instant::now();
     let ret = pass();
     let elapsed = start_time.elapsed();
-    let allocs_after = frontend::diagnostics::get_allocated();
+    let allocs_after = diagnostics::get_allocated();
     stats.push(PassStats {
         name: pass_name,
         time: elapsed,

@@ -1,5 +1,5 @@
 use crate::frontend::ctx::{Ctx, VarId};
-use crate::frontend::var::Uniq;
+use crate::var::Uniq;
 use std::fmt;
 use std::fmt::Write;
 use std::panic;
