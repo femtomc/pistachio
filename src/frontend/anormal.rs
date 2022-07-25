@@ -126,7 +126,11 @@ pub fn anormal_(ctx: &mut Ctx, expr: ast::Expr) -> (Expr, TypeId) {
             let (tmp1, arg1) = mk_let(ctx, e1, int);
             let e2 = anormal(ctx, *e2);
             let (tmp2, arg2) = mk_let(ctx, e2, int);
-            let e = tmp1.finish(tmp2.finish(Expr::IBinOp(BinOp { op, arg1, arg2 })));
+            let e = tmp1.finish(tmp2.finish(Expr::IBinOp(BinOp {
+                op,
+                arg1,
+                arg2,
+            })));
             (e, int)
         }
 
@@ -135,7 +139,11 @@ pub fn anormal_(ctx: &mut Ctx, expr: ast::Expr) -> (Expr, TypeId) {
             let (tmp1, arg1) = mk_let(ctx, e1, float);
             let e2 = anormal(ctx, *e2);
             let (tmp2, arg2) = mk_let(ctx, e2, float);
-            let e = tmp1.finish(tmp2.finish(Expr::FBinOp(BinOp { op, arg1, arg2 })));
+            let e = tmp1.finish(tmp2.finish(Expr::FBinOp(BinOp {
+                op,
+                arg1,
+                arg2,
+            })));
             (e, float)
         }
 
@@ -239,7 +247,10 @@ pub fn anormal_(ctx: &mut Ctx, expr: ast::Expr) -> (Expr, TypeId) {
             let fun_ty = (&*ctx.get_type(fun_ty_id)).clone();
             let ret_ty: Type = match &fun_ty {
                 Type::Fun { args: _, ret } => (**ret).clone(),
-                other => panic!("Non-function in function position: {:?} : {:?}", fun, other),
+                other => panic!(
+                    "Non-function in function position: {:?} : {:?}",
+                    fun, other
+                ),
             };
             let ret_ty_id = ctx.intern_type(ret_ty);
 
@@ -294,11 +305,9 @@ pub fn anormal_(ctx: &mut Ctx, expr: ast::Expr) -> (Expr, TypeId) {
             let (rhs, rhs_ty) = anormal_(ctx, *rhs);
             let (rhs_tmp, rhs_id) = mk_let(ctx, rhs, rhs_ty);
 
-            let e = bndrs
-                .into_iter()
-                .enumerate()
-                .rev()
-                .fold(body, |expr, (bndr_idx, bndr)| {
+            let e = bndrs.into_iter().enumerate().rev().fold(
+                body,
+                |expr, (bndr_idx, bndr)| {
                     let ty_id = ctx.var_type_id(bndr);
                     Expr::Let {
                         id: bndr,
@@ -306,7 +315,8 @@ pub fn anormal_(ctx: &mut Ctx, expr: ast::Expr) -> (Expr, TypeId) {
                         rhs: Box::new(Expr::TupleGet(rhs_id, bndr_idx)),
                         body: Box::new(expr),
                     }
-                });
+                },
+            );
 
             (rhs_tmp.finish(e), body_ty)
         }
@@ -355,8 +365,10 @@ pub fn anormal_(ctx: &mut Ctx, expr: ast::Expr) -> (Expr, TypeId) {
             let (e2_tmp, e2_id) = mk_let(ctx, e2, e2_ty_id);
             let (e3_tmp, e3_id) = mk_let(ctx, e3, e3_ty_id);
 
-            let e =
-                e1_tmp.finish(e2_tmp.finish(e3_tmp.finish(Expr::ArrayPut(e1_id, e2_id, e3_id))));
+            let e = e1_tmp
+                .finish(e2_tmp.finish(
+                    e3_tmp.finish(Expr::ArrayPut(e1_id, e2_id, e3_id)),
+                ));
 
             (e, unit)
         }

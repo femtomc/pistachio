@@ -102,7 +102,12 @@ impl<'ctx> CcCtx<'ctx> {
         });
     }
 
-    fn finish_block(&mut self, block: BlockBuilder, sequel: Sequel, value: Atom) {
+    fn finish_block(
+        &mut self,
+        block: BlockBuilder,
+        sequel: Sequel,
+        value: Atom,
+    ) {
         let BlockBuilder {
             idx,
             mut stmts,
@@ -188,13 +193,20 @@ pub fn lower_pgm(ctx: &mut Ctx, expr: anormal::Expr) -> (Vec<Fun>, VarId) {
 }
 
 // Returns whether the added block was a fork (i.e. then or else branch of an if)
-fn cc_block(ctx: &mut CcCtx, mut block: BlockBuilder, sequel: Sequel, expr: anormal::Expr) {
+fn cc_block(
+    ctx: &mut CcCtx,
+    mut block: BlockBuilder,
+    sequel: Sequel,
+    expr: anormal::Expr,
+) {
     match expr {
         anormal::Expr::Unit => ctx.finish_block(block, sequel, Atom::Unit),
 
         anormal::Expr::Int(i) => ctx.finish_block(block, sequel, Atom::Int(i)),
 
-        anormal::Expr::Float(f) => ctx.finish_block(block, sequel, Atom::Float(f)),
+        anormal::Expr::Float(f) => {
+            ctx.finish_block(block, sequel, Atom::Float(f))
+        }
 
         anormal::Expr::Neg(var) => {
             let tmp = ctx.fresh_var(RepType::Word);
@@ -334,7 +346,9 @@ fn cc_block(ctx: &mut CcCtx, mut block: BlockBuilder, sequel: Sequel, expr: anor
 
             let fun_ret_ty = match &*ctx.ctx.var_type(fun) {
                 Type::Fun { args: _, ret } => RepType::from(&**ret),
-                other => panic!("Non-function in function position: {:?}", other),
+                other => {
+                    panic!("Non-function in function position: {:?}", other)
+                }
             };
             let ret_tmp = sequel.get_ret_var(ctx, fun_ret_ty);
 

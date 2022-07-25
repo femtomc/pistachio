@@ -179,7 +179,11 @@ impl Fun {
 }
 
 impl Block {
-    pub fn pp(&self, ctx: &Ctx, w: &mut dyn fmt::Write) -> Result<(), fmt::Error> {
+    pub fn pp(
+        &self,
+        ctx: &Ctx,
+        w: &mut dyn fmt::Write,
+    ) -> Result<(), fmt::Error> {
         let Block {
             idx,
             comment,

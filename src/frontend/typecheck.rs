@@ -81,7 +81,9 @@ fn norm_ty(substs: &SubstEnv, ty: Type) -> Type {
             args: args.into_iter().map(|ty| norm_ty(substs, ty)).collect(),
             ret: Box::new(norm_ty(substs, *ret)),
         },
-        Type::Tuple(args) => Type::Tuple(args.into_iter().map(|ty| norm_ty(substs, ty)).collect()),
+        Type::Tuple(args) => Type::Tuple(
+            args.into_iter().map(|ty| norm_ty(substs, ty)).collect(),
+        ),
         Type::Array(ty) => Type::Array(Box::new(norm_ty(substs, *ty))),
         Type::Var(_) => {
             let deref = deref_ty(substs, &ty).clone();
@@ -116,7 +118,8 @@ fn occurs_check(subst: &SubstEnv, var: TyVar, ty: &Type) -> bool {
     match deref_ty(subst, ty) {
         Type::Unit | Type::Bool | Type::Int | Type::Float => false,
         Type::Fun { args, ret } => {
-            args.iter().any(|ty| occurs_check(subst, var, ty)) || occurs_check(subst, var, ret)
+            args.iter().any(|ty| occurs_check(subst, var, ty))
+                || occurs_check(subst, var, ret)
         }
         Type::Tuple(args) => args.iter().any(|ty| occurs_check(subst, var, ty)),
         Type::Array(ty) => occurs_check(subst, var, ty),
@@ -357,7 +360,11 @@ fn typecheck(
     }
 }
 
-fn unify(subst_env: &mut SubstEnv, ty1: &Type, ty2: &Type) -> Result<(), TypeErr> {
+fn unify(
+    subst_env: &mut SubstEnv,
+    ty1: &Type,
+    ty2: &Type,
+) -> Result<(), TypeErr> {
     let ty1 = deref_ty(subst_env, ty1).clone();
     let ty2 = deref_ty(subst_env, ty2).clone();
 

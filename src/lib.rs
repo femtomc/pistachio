@@ -19,12 +19,10 @@ use std::time::{Duration, Instant};
 #[cfg(feature = "cranelift-codegen")]
 use backend::cranelift::codegen;
 
-#[cfg(feature = "llvm-codegen")]
-use backend::llvm::codegen;
-
 #[cfg(debug_assertions)]
 #[global_allocator]
-static A: frontend::diagnostics::AllocCounter = frontend::diagnostics::AllocCounter;
+static A: frontend::diagnostics::AllocCounter =
+    frontend::diagnostics::AllocCounter;
 
 #[derive(Debug)]
 struct PassStats {
@@ -63,7 +61,9 @@ fn compile_expr(
     let mut pass_stats: Vec<PassStats> = Vec::with_capacity(10);
 
     let tokens: Vec<Token> =
-        match record_pass_stats(&mut pass_stats, "lexing", || tokenize(expr_str)) {
+        match record_pass_stats(&mut pass_stats, "lexing", || {
+            tokenize(expr_str)
+        }) {
             Err(err) => {
                 println!("Lexer error: {:#?}", err);
                 return None;
@@ -83,7 +83,9 @@ fn compile_expr(
         Ok(expr) => expr,
     };
 
-    let mut expr = record_pass_stats(&mut pass_stats, "interning", || expr.intern(&mut ctx));
+    let mut expr = record_pass_stats(&mut pass_stats, "interning", || {
+        expr.intern(&mut ctx)
+    });
 
     match record_pass_stats(&mut pass_stats, "type checking", || {
         typecheck_pgm(&mut ctx, &mut expr)
@@ -99,12 +101,14 @@ fn compile_expr(
         anormal(&mut ctx, expr)
     });
 
-    let (funs, main) = record_pass_stats(&mut pass_stats, "closure conversion", || {
-        lower_pgm(&mut ctx, expr)
-    });
+    let (funs, main) =
+        record_pass_stats(&mut pass_stats, "closure conversion", || {
+            lower_pgm(&mut ctx, expr)
+        });
 
     if dump_cc {
-        let mut file = File::create(format!("{}/{}", out_dir, "emitted.cfg")).unwrap();
+        let mut file =
+            File::create(format!("{}/{}", out_dir, "emitted.cfg")).unwrap();
         let mut s = String::new();
         for fun in &funs {
             fun.pp(&ctx, &mut s).unwrap();
@@ -112,9 +116,10 @@ fn compile_expr(
         file.write_all(s.as_bytes());
     }
 
-    let object_code = record_pass_stats(&mut pass_stats, "code generation", || {
-        codegen(&mut ctx, &funs, main, out_dir, dump_cg)
-    });
+    let object_code =
+        record_pass_stats(&mut pass_stats, "code generation", || {
+            codegen(&mut ctx, &funs, main, out_dir, dump_cg)
+        });
 
     if dump_pass_stats {
         report_pass_stats(out_dir, &pass_stats);
@@ -127,16 +132,22 @@ fn report_pass_stats(out_dir: &str, pass_stats: &[PassStats]) {
     // TODO: align columns
     // TODO: show percentage of allocs and times of each pass
     // TODO: maintain a counter for max res?
-    let mut file = File::create(format!("{}/{}", out_dir, "compiler_stats.csv")).unwrap();
+    let mut file =
+        File::create(format!("{}/{}", out_dir, "compiler_stats.csv")).unwrap();
     let mut total_elapsed: Duration = Duration::from_micros(0);
     let mut total_allocated: usize = 0;
     for PassStats { name, time, allocs } in pass_stats {
-        file.write_all(format!("{}, {}, {}\n", name, time.as_millis(), allocs,).as_bytes());
+        file.write_all(
+            format!("{}, {}, {}\n", name, time.as_millis(), allocs,).as_bytes(),
+        );
         total_elapsed += *time;
         total_allocated += allocs;
     }
 
-    file.write_all(format!("total, {}, {}", total_elapsed.as_millis(), total_allocated).as_bytes());
+    file.write_all(
+        format!("total, {}, {}", total_elapsed.as_millis(), total_allocated)
+            .as_bytes(),
+    );
 }
 
 pub fn compile_file(

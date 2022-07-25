@@ -154,7 +154,9 @@ lexer! {
 }
 
 #[cfg(test)]
-fn unwrap_ignore_pos<T, E: std::fmt::Debug>(token: Option<Result<(usize, T, usize), E>>) -> T {
+fn unwrap_ignore_pos<T, E: std::fmt::Debug>(
+    token: Option<Result<(usize, T, usize), E>>,
+) -> T {
     token.unwrap().unwrap().1
 }
 

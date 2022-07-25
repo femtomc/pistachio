@@ -84,19 +84,25 @@ impl ParsedExpr {
 
             ParsedExpr::Neg(e) => Expr::Neg(Box::new(e.intern(ctx))),
 
-            ParsedExpr::IntBinOp(e1, op, e2) => {
-                Expr::IntBinOp(Box::new(e1.intern(ctx)), op, Box::new(e2.intern(ctx)))
-            }
+            ParsedExpr::IntBinOp(e1, op, e2) => Expr::IntBinOp(
+                Box::new(e1.intern(ctx)),
+                op,
+                Box::new(e2.intern(ctx)),
+            ),
 
             ParsedExpr::FNeg(e) => Expr::FNeg(Box::new(e.intern(ctx))),
 
-            ParsedExpr::FloatBinOp(e1, op, e2) => {
-                Expr::FloatBinOp(Box::new(e1.intern(ctx)), op, Box::new(e2.intern(ctx)))
-            }
+            ParsedExpr::FloatBinOp(e1, op, e2) => Expr::FloatBinOp(
+                Box::new(e1.intern(ctx)),
+                op,
+                Box::new(e2.intern(ctx)),
+            ),
 
-            ParsedExpr::Cmp(e1, op, e2) => {
-                Expr::Cmp(Box::new(e1.intern(ctx)), op, Box::new(e2.intern(ctx)))
-            }
+            ParsedExpr::Cmp(e1, op, e2) => Expr::Cmp(
+                Box::new(e1.intern(ctx)),
+                op,
+                Box::new(e2.intern(ctx)),
+            ),
 
             ParsedExpr::If(e1, e2, e3) => Expr::If(
                 Box::new(e1.intern(ctx)),
@@ -129,12 +135,15 @@ impl ParsedExpr {
                 args: args.into_iter().map(|arg| arg.intern(ctx)).collect(),
             },
 
-            ParsedExpr::Tuple(args) => {
-                Expr::Tuple(args.into_iter().map(|arg| arg.intern(ctx)).collect())
-            }
+            ParsedExpr::Tuple(args) => Expr::Tuple(
+                args.into_iter().map(|arg| arg.intern(ctx)).collect(),
+            ),
 
             ParsedExpr::LetTuple { bndrs, rhs, body } => Expr::LetTuple {
-                bndrs: bndrs.into_iter().map(|bndr| intern(&bndr, ctx)).collect(),
+                bndrs: bndrs
+                    .into_iter()
+                    .map(|bndr| intern(&bndr, ctx))
+                    .collect(),
                 rhs: Box::new(rhs.intern(ctx)),
                 body: Box::new(body.intern(ctx)),
             },

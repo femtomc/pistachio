@@ -33,8 +33,9 @@ where
 {
     unsafe {
         let old_t = ptr::read(mut_ref);
-        let new_t = panic::catch_unwind(panic::AssertUnwindSafe(|| closure(old_t)))
-            .unwrap_or_else(|_| ::std::process::abort());
+        let new_t =
+            panic::catch_unwind(panic::AssertUnwindSafe(|| closure(old_t)))
+                .unwrap_or_else(|_| ::std::process::abort());
         ptr::write(mut_ref, new_t);
     }
 }
@@ -56,7 +57,8 @@ pub fn show_arg_list(ctx: &Ctx, args: &[VarId]) -> String {
     s
 }
 
-static BASE62_CHARS: &[u8] = b"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+static BASE62_CHARS: &[u8] =
+    b"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
 // TODO: What does this print for 62??
 pub fn base62_encode(uniq: Uniq, w: &mut dyn Write) -> fmt::Result {

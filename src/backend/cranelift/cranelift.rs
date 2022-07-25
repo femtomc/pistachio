@@ -14,7 +14,9 @@ use cranelift_codegen::isa::CallConv;
 use cranelift_codegen::settings::{self, Configurable};
 use cranelift_codegen::verifier::verify_function;
 use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext, Variable};
-use cranelift_module::{default_libcall_names, DataId, FuncId, Linkage, Module};
+use cranelift_module::{
+    default_libcall_names, DataId, FuncId, Linkage, Module,
+};
 use cranelift_object::{ObjectBuilder, ObjectModule, ObjectProduct};
 use fxhash::{FxHashMap, FxHashSet};
 use std::fs::File;
@@ -93,14 +95,16 @@ impl Env {
                 builder.ins().func_addr(I64, fun_ref)
             }
             Some(VarVal::Data(data_id)) => {
-                let data_ref = module.declare_data_in_func(data_id, builder.func);
+                let data_ref =
+                    module.declare_data_in_func(data_id, builder.func);
                 let val = builder.ins().global_value(I64, data_ref);
                 // self.0.insert(var, VarVal::Known(val));
                 val
             }
             None => {
                 // Should be a variable declared and defined before.
-                let var = Variable::new(ctx.get_var(var).get_uniq().0.get() as usize);
+                let var =
+                    Variable::new(ctx.get_var(var).get_uniq().0.get() as usize);
                 builder.use_var(var)
             }
         }
@@ -154,7 +158,8 @@ fn init_module_env(
             .map(|arg| AbiParam::new(rep_type_abi(ctx.var_rep_type(*arg))))
             .collect();
 
-        let returns: Vec<AbiParam> = vec![AbiParam::new(rep_type_abi(*return_type))];
+        let returns: Vec<AbiParam> =
+            vec![AbiParam::new(rep_type_abi(*return_type))];
 
         let sig = Signature {
             params,
@@ -217,11 +222,14 @@ fn codegen_fun(
         .expect("Can't find FuncId of function");
 
     // TODO: Only do this for functions that allocate
-    let malloc: FuncRef = module.declare_func_in_func(malloc_id, &mut context.func);
+    let malloc: FuncRef =
+        module.declare_func_in_func(malloc_id, &mut context.func);
 
-    let mut builder: FunctionBuilder = FunctionBuilder::new(&mut context.func, fn_builder_ctx);
+    let mut builder: FunctionBuilder =
+        FunctionBuilder::new(&mut context.func, fn_builder_ctx);
 
-    let mut label_to_block: FxHashMap<cfg::BlockIdx, Block> = Default::default();
+    let mut label_to_block: FxHashMap<cfg::BlockIdx, Block> =
+        Default::default();
 
     for block in blocks.values().filter_map(cfg::BlockData::get_block) {
         let cl_block = builder.create_block();
@@ -242,14 +250,17 @@ fn codegen_fun(
     // Declare locals.
     // (TODO: we should probably have these readily available in cfg::Fun)
     let mut declared: FxHashSet<VarId> = Default::default();
-    for cfg::Block { stmts, .. } in blocks.values().filter_map(cfg::BlockData::get_block) {
+    for cfg::Block { stmts, .. } in
+        blocks.values().filter_map(cfg::BlockData::get_block)
+    {
         for stmt in stmts {
             match stmt {
                 cfg::Stmt::Asgn(cfg::Asgn { lhs, rhs: _ }) => {
                     if !declared.contains(lhs) {
                         declared.insert(*lhs);
-                        let lhs_cl_var =
-                            Variable::new(ctx.get_var(*lhs).get_uniq().0.get() as usize);
+                        let lhs_cl_var = Variable::new(
+                            ctx.get_var(*lhs).get_uniq().0.get() as usize,
+                        );
                         let lhs_abi_type = rep_type_abi(ctx.var_rep_type(*lhs));
                         builder.declare_var(lhs_cl_var, lhs_abi_type);
                     }
@@ -273,16 +284,32 @@ fn codegen_fun(
         for stmt in stmts {
             match stmt {
                 cfg::Stmt::Asgn(cfg::Asgn { lhs, rhs }) => {
-                    let (block, val) =
-                        codegen_expr(ctx, module, cl_block, &mut builder, &mut env, malloc, rhs);
+                    let (block, val) = codegen_expr(
+                        ctx,
+                        module,
+                        cl_block,
+                        &mut builder,
+                        &mut env,
+                        malloc,
+                        rhs,
+                    );
                     cl_block = block;
 
-                    let lhs_cl_var = Variable::new(ctx.get_var(*lhs).get_uniq().0.get() as usize);
+                    let lhs_cl_var = Variable::new(
+                        ctx.get_var(*lhs).get_uniq().0.get() as usize,
+                    );
                     builder.def_var(lhs_cl_var, val.unwrap());
                 }
                 cfg::Stmt::Expr(expr) => {
-                    let (block, _) =
-                        codegen_expr(ctx, module, cl_block, &mut builder, &mut env, malloc, expr);
+                    let (block, _) = codegen_expr(
+                        ctx,
+                        module,
+                        cl_block,
+                        &mut builder,
+                        &mut env,
+                        malloc,
+                        expr,
+                    );
                     cl_block = block;
                 }
             }
@@ -372,9 +399,15 @@ fn codegen_expr(
     rhs: &cfg::Expr,
 ) -> (Block, Option<Value>) {
     match rhs {
-        cfg::Expr::Atom(cfg::Atom::Unit) => (block, Some(builder.ins().iconst(I64, 0))),
-        cfg::Expr::Atom(cfg::Atom::Int(i)) => (block, Some(builder.ins().iconst(I64, *i))),
-        cfg::Expr::Atom(cfg::Atom::Float(f)) => (block, Some(builder.ins().f64const(*f))),
+        cfg::Expr::Atom(cfg::Atom::Unit) => {
+            (block, Some(builder.ins().iconst(I64, 0)))
+        }
+        cfg::Expr::Atom(cfg::Atom::Int(i)) => {
+            (block, Some(builder.ins().iconst(I64, *i)))
+        }
+        cfg::Expr::Atom(cfg::Atom::Float(f)) => {
+            (block, Some(builder.ins().f64const(*f)))
+        }
         cfg::Expr::Atom(cfg::Atom::Var(var)) => {
             (block, Some(env.use_var(ctx, module, builder, *var)))
         }
@@ -422,7 +455,8 @@ fn codegen_expr(
                 })
                 .collect();
 
-            let returns: Vec<AbiParam> = vec![AbiParam::new(rep_type_abi(*ret_type))];
+            let returns: Vec<AbiParam> =
+                vec![AbiParam::new(rep_type_abi(*ret_type))];
 
             // TODO: Apparently cranelift doesn't intern these signatures so if we add `int -> int`
             // many times we get many `int -> int` signatures in the module. Would be good to cache
@@ -441,7 +475,8 @@ fn codegen_expr(
                 .iter()
                 .map(|arg| env.use_var(ctx, module, builder, *arg))
                 .collect();
-            let call = builder.ins().call_indirect(fun_sig_ref, callee, &arg_vals);
+            let call =
+                builder.ins().call_indirect(fun_sig_ref, callee, &arg_vals);
             (block, Some(builder.inst_results(call)[0]))
         }
 
@@ -469,7 +504,9 @@ fn codegen_expr(
         cfg::Expr::TupleGet(tuple, idx) => {
             let tuple_type = ctx.var_type(*tuple);
             let elem_type = match &*tuple_type {
-                typecheck::Type::Tuple(args) => rep_type_abi(RepType::from(&args[*idx])),
+                typecheck::Type::Tuple(args) => {
+                    rep_type_abi(RepType::from(&args[*idx]))
+                }
                 typecheck::Type::Fun { .. } => {
                     // NOTE DISGUSTING HACK: This case happens after closure conversion where we
                     // turn functions into tuples (closures) and in application code when we see
@@ -508,7 +545,9 @@ fn codegen_expr(
         cfg::Expr::ArrayGet(array, idx) => {
             let var_type = ctx.var_type(*array);
             let elem_type = match &*var_type {
-                typecheck::Type::Array(elem_type) => rep_type_abi(RepType::from(&**elem_type)),
+                typecheck::Type::Array(elem_type) => {
+                    rep_type_abi(RepType::from(&**elem_type))
+                }
                 _ => panic!("Non-array in array location"),
             };
 
@@ -519,11 +558,12 @@ fn codegen_expr(
             let load_target = builder.ins().iadd(array, offset);
             (
                 block,
-                Some(
-                    builder
-                        .ins()
-                        .load(elem_type, MemFlags::new(), load_target, 0),
-                ),
+                Some(builder.ins().load(
+                    elem_type,
+                    MemFlags::new(),
+                    load_target,
+                    0,
+                )),
             )
         }
 
@@ -557,10 +597,12 @@ fn make_main(
     let main_func_id: FuncId = module
         .declare_function("main", Linkage::Export, &context.func.signature)
         .unwrap();
-    let mut builder: FunctionBuilder = FunctionBuilder::new(&mut context.func, fun_ctx);
+    let mut builder: FunctionBuilder =
+        FunctionBuilder::new(&mut context.func, fun_ctx);
     let block = builder.create_block();
     builder.switch_to_block(block);
-    let expr_func_ref: FuncRef = module.declare_func_in_func(main_id, builder.func);
+    let expr_func_ref: FuncRef =
+        module.declare_func_in_func(main_id, builder.func);
     builder.ins().call(expr_func_ref, &[]);
     let ret = builder.ins().iconst(I32, 0);
     builder.ins().return_(&[ret]);
@@ -642,7 +684,7 @@ pub fn codegen(
 
     let mut fn_builder_ctx = FunctionBuilderContext::new();
 
-    // Declare malloc at module-level and pass the id to code gen to be able to generate malloc
+    // Declare malloc at module-level and pass the id to codegen to be able to generate malloc
     // calls.
     let malloc_id = declare_malloc(&mut module);
 
@@ -655,7 +697,8 @@ pub fn codegen(
     let (env, main_fun_id) = init_module_env(ctx, &mut module, funs, main_id);
 
     // Generate code for functions
-    let mut file = File::create(format!("{}/{}", out_dir, "emitted.clif")).unwrap();
+    let mut file =
+        File::create(format!("{}/{}", out_dir, "emitted.clif")).unwrap();
     for fun in funs {
         codegen_fun(
             ctx,
@@ -723,7 +766,8 @@ pub fn codegen_jit(
     let (env, main_fun_id) = init_module_env(ctx, &mut module, funs, main_id);
 
     // Generate code for functions
-    let mut file = File::create(format!("{}/{}", out_dir, "emitted.clif")).unwrap();
+    let mut file =
+        File::create(format!("{}/{}", out_dir, "emitted.clif")).unwrap();
     for fun in funs {
         codegen_fun(
             ctx,

@@ -62,7 +62,8 @@ impl Ctx {
 
     pub fn fresh_uniq(&mut self) -> Uniq {
         let uniq = self.next_uniq;
-        self.next_uniq.0 = unsafe { NonZeroU32::new_unchecked(self.next_uniq.0.get() + 1) };
+        self.next_uniq.0 =
+            unsafe { NonZeroU32::new_unchecked(self.next_uniq.0.get() + 1) };
         uniq
     }
 
@@ -80,7 +81,11 @@ impl Ctx {
         self.ty_env.insert(var, ty);
     }
 
-    pub fn fresh_codegen_var(&mut self, phase: CompilerPhase, rep_type: RepType) -> VarId {
+    pub fn fresh_codegen_var(
+        &mut self,
+        phase: CompilerPhase,
+        rep_type: RepType,
+    ) -> VarId {
         let uniq = self.fresh_uniq();
         let var_id = self.intern_var(Var::new_generated(phase, uniq));
         self.rep_ty_env.insert(var_id, rep_type);
@@ -89,7 +94,11 @@ impl Ctx {
 
     pub fn var_rep_type(&mut self, var: VarId) -> RepType {
         match self.rep_ty_env.get(&var) {
-            None => match self.ty_env.get(&var).map(|ty_id| self.get_type(*ty_id)) {
+            None => match self
+                .ty_env
+                .get(&var)
+                .map(|ty_id| self.get_type(*ty_id))
+            {
                 None => {
                     let var = self.get_var(var);
                     panic!("RepType of variable unknown: {} ({:?})", var, var);
@@ -104,7 +113,11 @@ impl Ctx {
         }
     }
 
-    fn fresh_builtin_var(&mut self, user_name: &str, symbol_name: &str) -> VarId {
+    fn fresh_builtin_var(
+        &mut self,
+        user_name: &str,
+        symbol_name: &str,
+    ) -> VarId {
         let uniq = self.fresh_uniq();
         self.intern_var(Var::new_builtin(user_name, symbol_name, uniq))
     }
@@ -144,7 +157,10 @@ impl Ctx {
         self.fresh_uniq()
     }
 
-    pub fn extend_type_env(&mut self, types: impl Iterator<Item = (VarId, Type)>) {
+    pub fn extend_type_env(
+        &mut self,
+        types: impl Iterator<Item = (VarId, Type)>,
+    ) {
         for (var, ty) in types {
             let ty = self.intern_type(ty);
             self.ty_env.insert(var, ty);
@@ -192,21 +208,24 @@ impl Ctx {
         });
         self.add_builtin(print_int_var, print_int_ty);
 
-        let print_newline_var = self.fresh_builtin_var("print_newline", "mc_print_newline");
+        let print_newline_var =
+            self.fresh_builtin_var("print_newline", "mc_print_newline");
         let print_newline_ty = self.intern_type(Type::Fun {
             args: vec![Type::Unit],
             ret: Box::new(Type::Unit),
         });
         self.add_builtin(print_newline_var, print_newline_ty);
 
-        let float_of_int_var = self.fresh_builtin_var("float_of_int", "mc_float_of_int");
+        let float_of_int_var =
+            self.fresh_builtin_var("float_of_int", "mc_float_of_int");
         let float_of_int_ty = self.intern_type(Type::Fun {
             args: vec![Type::Int],
             ret: Box::new(Type::Float),
         });
         self.add_builtin(float_of_int_var, float_of_int_ty);
 
-        let int_of_float_var = self.fresh_builtin_var("int_of_float", "mc_int_of_float");
+        let int_of_float_var =
+            self.fresh_builtin_var("int_of_float", "mc_int_of_float");
         self.add_builtin(int_of_float_var, float_int);
 
         let truncate_var = self.fresh_builtin_var("truncate", "mc_truncate");

@@ -2,13 +2,19 @@ use std::fs;
 use std::process::exit;
 
 fn main() {
-    //libwml::diagnostics::diagnostics_setup().unwrap();
+    //libstachio::diagnostics::diagnostics_setup().unwrap();
     let args: Vec<String> = std::env::args().collect();
-    let outdir = ".mc-compiled";
+    let outdir = ".pi-compiled";
     fs::create_dir_all(outdir).unwrap();
     match args.as_slice() {
         [_, ref file] => {
-            exit(libwml::compile_file(file, Some(outdir), true, true, true));
+            exit(libstachio::compile_file(
+                file,
+                Some(outdir),
+                true,
+                true,
+                true,
+            ));
         }
         _ => {
             println!("What do you mean?");

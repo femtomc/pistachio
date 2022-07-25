@@ -1,20 +1,16 @@
 [package]
-name = "wowcaml"
+name = "pistachio"
 version = "0.1.0"
 authors = ["McCoy R. Becker <mccoyb@mit.edu>, Ömer Sinan Ağacan <omeragacan@gmail.com>"]
-edition = "2018"
+edition = "2021"
 
 [lib]
-name = "libwml"
+name = "libstachio"
 path = "src/lib.rs"
 
 [[bin]]
-name = "wmlcc"
+name = "picco"
 path = "bin/compiler.rs"
-
-[[bin]]
-name = "test"
-path = "bin/test.rs"
 
 [dependencies]
 ariadne = "0.1.5"
@@ -27,7 +23,6 @@ cranelift-frontend = { optional = true, version = "0.84.0"}
 cranelift-module = { optional = true, version = "0.84.0" }
 cranelift-object = { optional = true, version = "0.84.0" }
 fxhash = "0.2.1"
-inkwell = { optional = true, git = "https://github.com/TheDan64/inkwell", branch = "master", features = ["llvm13-0"] }
 lexgen = "0.4.0"
 parsegen = "0.1"
 target-lexicon = "0.12.4"
@@ -43,7 +38,6 @@ default = ["cranelift-backend"]
 cranelift-backend = ["cranelift", "cranelift-codegen", "cranelift-entity",
                      "cranelift-frontend", "cranelift-module", 
                      "cranelift-object"]
-llvm-backend = ["inkwell"]
 
 [profile.release]
 lto = true
